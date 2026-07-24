@@ -145,7 +145,6 @@ export class EventCircle extends Phaser.GameObjects.Container {
 
   canAcceptCard(): boolean {
     if (this.eventData.completed) return false;
-    if (this.eventData.progress >= this.eventData.energyAmount) return false;
     return this.eventData.cardsPlacedThisTurn < this.eventData.cardsPerTurn;
   }
 

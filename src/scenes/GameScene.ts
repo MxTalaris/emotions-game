@@ -3,7 +3,12 @@ import { CardSprite } from '../entities/CardSprite';
 import { EventCircle } from '../entities/EventCircle';
 import { FeelButton } from '../entities/FeelButton';
 import { MusicToggleButton } from '../entities/MusicToggleButton';
+import { PersonalityCloud } from '../entities/PersonalityCloud';
 import { EventManager } from '../systems/EventManager';
+import {
+  addPersonalityToSession,
+  loadGameSession,
+} from '../systems/gameSession';
 import { resolveRewardCards } from '../systems/grantRewardCards';
 import { resolveEventOutputEmotions } from '../systems/resolveEventOutputs';
 import {
@@ -21,6 +26,7 @@ import {
   EventAction,
   EventResult,
   GameEventInstance,
+  PersonalityId,
 } from '../types';
 import {
   CARD_HEIGHT,
@@ -38,6 +44,7 @@ import {
   TREE_ZOOM,
 } from '../config/gameConfig';
 import { APATHY_CARD, getInitialHandCards } from '../data/cards';
+import { isCatalogPersonalityId } from '../data/personalities';
 
 const TREE_LABEL_OFFSET = 30;
 
@@ -86,6 +93,8 @@ export class GameScene extends Phaser.Scene {
   private turnText!: Phaser.GameObjects.Text;
   private bgm: Phaser.Sound.BaseSound | null = null;
   private musicEnabled = false;
+  private personalityClouds: PersonalityCloud[] = [];
+  private endGameOverlay: Phaser.GameObjects.Container | null = null;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -96,6 +105,22 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.handCards = [];
+    this.eventCircles = [];
+    this.placedCardsByEvent = new Map();
+    this.draggingCard = null;
+    this.eventManager = new EventManager();
+    this.turnManager = new TurnManager();
+    this.treeScrollY = 0;
+    this.treeScrollX = 0;
+    this.treeZoom = TREE_ZOOM.default;
+    this.handScrollX = 0;
+    this.viewportGesture = null;
+    this.personalityClouds = [];
+    this.endGameOverlay = null;
+    this.bgm = null;
+    this.musicEnabled = false;
+
     this.add
       .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x1a1a2e)
       .setDepth(-1)
@@ -116,6 +141,7 @@ export class GameScene extends Phaser.Scene {
     this.ensureApathyHandForRequiredSlots();
     this.updateFeelButtonState();
     this.setupBackgroundMusic();
+    this.restoreSessionPersonalities();
   }
 
   private setupBackgroundMusic(): void {
@@ -995,12 +1021,23 @@ export class GameScene extends Phaser.Scene {
   ): void {
     const immediateTemplateIds: number[] = [];
     const emotionAliases: CardAlias[] = [];
+
     for (const action of actions) {
       if (action.type === 'createEmotion') {
         const emotions = Array.isArray(action.emotions)
           ? action.emotions
           : [action.emotions];
         emotionAliases.push(...emotions);
+        continue;
+      }
+
+      if (action.type === 'generatePersonality') {
+        this.generatePersonality(action.personality);
+        continue;
+      }
+
+      if (action.type === 'endGame') {
+        this.endGame();
         continue;
       }
 
@@ -1029,6 +1066,108 @@ export class GameScene extends Phaser.Scene {
         immediateTemplateIds
       );
       this.spawnEvents(parent, newEvents);
+    }
+  }
+
+  generatePersonality(personalityAlias: string): void {
+    if (!isCatalogPersonalityId(personalityAlias)) {
+      console.warn(`generatePersonality: unknown alias "${personalityAlias}"`);
+      return;
+    }
+
+    const alias = personalityAlias as PersonalityId;
+    addPersonalityToSession(alias);
+
+    if (this.personalityClouds.some((cloud) => cloud.getData('alias') === alias)) {
+      return;
+    }
+
+    const index = this.personalityClouds.length;
+    const cloud = new PersonalityCloud(
+      this,
+      70 + index * 130,
+      70,
+      alias
+    );
+    cloud.setData('alias', alias);
+    cloud.setScrollFactor(0);
+    this.personalityClouds.push(cloud);
+  }
+
+  endGame(): void {
+    if (this.endGameOverlay) return;
+
+    const overlay = this.add.container(0, 0).setDepth(200).setScrollFactor(0);
+
+    const dim = this.add
+      .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.65)
+      .setInteractive();
+
+    const panel = this.add.rectangle(
+      GAME_WIDTH / 2,
+      GAME_HEIGHT / 2,
+      340,
+      200,
+      0x2d3561
+    );
+    panel.setStrokeStyle(3, 0x66bb6a);
+
+    const title = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 48, 'Sucesso!', {
+        fontSize: '28px',
+        color: '#66bb6a',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5);
+
+    const subtitle = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 8, 'Você descobriu uma personalidade.', {
+        fontSize: '14px',
+        color: '#c5cae9',
+        align: 'center',
+      })
+      .setOrigin(0.5);
+
+    const buttonBg = this.add.rectangle(
+      GAME_WIDTH / 2,
+      GAME_HEIGHT / 2 + 52,
+      120,
+      44,
+      0x43a047
+    );
+    buttonBg.setStrokeStyle(2, 0x66bb6a);
+    buttonBg.setInteractive({ useHandCursor: true });
+
+    const buttonLabel = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 52, 'YAY', {
+        fontSize: '18px',
+        color: '#ffffff',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5);
+
+    buttonBg.on('pointerover', () => buttonBg.setFillStyle(0x66bb6a));
+    buttonBg.on('pointerout', () => buttonBg.setFillStyle(0x43a047));
+    buttonBg.on('pointerdown', () => {
+      this.scene.start('StartScene');
+    });
+
+    overlay.add([dim, panel, title, subtitle, buttonBg, buttonLabel]);
+    this.endGameOverlay = overlay;
+
+    overlay.setAlpha(0);
+    this.tweens.add({
+      targets: overlay,
+      alpha: 1,
+      duration: 280,
+      ease: 'Sine.easeOut',
+    });
+  }
+
+  private restoreSessionPersonalities(): void {
+    const session = loadGameSession();
+    for (const alias of session.personalities) {
+      this.generatePersonality(alias);
     }
   }
 }

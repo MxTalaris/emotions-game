@@ -51,6 +51,13 @@
             "personality": "all",
             "event": "3",
             "delay": 0
+          },
+          {
+            "type": "generatePersonality",
+            "personality": "guarded"
+          },
+          {
+            "type": "endGame"
           }
         ]
       },
@@ -172,7 +179,31 @@
       }
     ],
     "outputs": [
-      
+      {
+        "input": {
+          "type": "default"
+        },
+        "exclusive": false,
+        "priority": 0,
+        "outputEmotions": [
+          "anger-rage",
+          "joy-fun"
+        ]
+      },
+      {
+        "input": {
+          "type": "suitQuantities",
+          "suitQuantities": [
+            {
+              "suitId": "joy",
+              "quantity": 1
+            }
+          ]
+        },
+        "exclusive": false,
+        "priority": 1,
+        "outputEmotions": "joy-gratitude"
+      }
     ]
   },
   {
@@ -510,7 +541,7 @@
         ],
         "suitEnergies": [],
         "cardEmotions": [
-          "apatia"
+          "apathy-basic"
         ]
       }
     ],
@@ -969,6 +1000,25 @@
     "autoComplete": 0,
     "autoCompleteSecret": false,
     "cardsRequired": true,
+    "results": [
+      {
+        "type": {
+          "type": "default"
+        },
+        "outputOverride": false,
+        "exclusive": false,
+        "priority": 0,
+        "actions": [
+          {
+            "type": "generatePersonality",
+            "personality": "warm"
+          },
+          {
+            "type": "endGame"
+          }
+        ]
+      }
+    ],
     "outputs": [
       {
         "input": {
