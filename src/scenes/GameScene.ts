@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { CardSprite } from '../entities/CardSprite';
 import { EventCircle } from '../entities/EventCircle';
 import { FeelButton } from '../entities/FeelButton';
+import { FlowerDetailPopup } from '../entities/FlowerDetailPopup';
 import { MusicToggleButton } from '../entities/MusicToggleButton';
 import { PersonalityCloud } from '../entities/PersonalityCloud';
 import { EventManager } from '../systems/EventManager';
@@ -46,6 +47,14 @@ import {
 } from '../config/gameConfig';
 import { APATHY_CARD, getInitialHandCards } from '../data/cards';
 import { isCatalogPersonalityId } from '../data/personalities';
+import {
+  buildBranchCurve,
+  drawSkyGroundBackground,
+  Point,
+  strokeCubicProgress,
+} from '../utils/gardenGraphics';
+
+type BranchCurve = [Point, Point, Point, Point];
 
 const TREE_LABEL_OFFSET = 30;
 
@@ -57,6 +66,7 @@ type ViewportGesture =
       startY: number;
       originScrollX: number;
       originScrollY: number;
+      flowerTap: EventCircle | null;
     }
   | {
       type: 'hand-pan';
@@ -84,6 +94,8 @@ export class GameScene extends Phaser.Scene {
   private turnManager = new TurnManager();
   private treeLayer!: Phaser.GameObjects.Container;
   private treeGraphics!: Phaser.GameObjects.Graphics;
+  private grownBranches: BranchCurve[] = [];
+  private growingBranches: Array<{ curve: BranchCurve; progress: number }> = [];
   private treeScrollY = 0;
   private treeScrollX = 0;
   private treeZoom = TREE_ZOOM.default;
@@ -96,6 +108,7 @@ export class GameScene extends Phaser.Scene {
   private musicEnabled = false;
   private personalityClouds: PersonalityCloud[] = [];
   private endGameOverlay: Phaser.GameObjects.Container | null = null;
+  private flowerDetailPopup: FlowerDetailPopup | null = null;
   private launchSeedId: string | null = null;
   private launchSelectedPersonalities: PersonalityId[] = [];
 
@@ -122,6 +135,8 @@ export class GameScene extends Phaser.Scene {
     this.eventCircles = [];
     this.placedCardsByEvent = new Map();
     this.draggingCard = null;
+    this.grownBranches = [];
+    this.growingBranches = [];
 
     const session = loadGameSession();
     const selectedPersonalities =
@@ -142,13 +157,11 @@ export class GameScene extends Phaser.Scene {
     this.viewportGesture = null;
     this.personalityClouds = [];
     this.endGameOverlay = null;
+    this.flowerDetailPopup = null;
     this.bgm = null;
     this.musicEnabled = false;
 
-    this.add
-      .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x1a1a2e)
-      .setDepth(-1)
-      .setScrollFactor(0);
+    drawSkyGroundBackground(this, GAME_WIDTH, GAME_HEIGHT);
 
     this.treeLayer = this.add.container(0, 0).setDepth(10);
     this.treeGraphics = this.add.graphics();
@@ -221,55 +234,79 @@ export class GameScene extends Phaser.Scene {
   ): void {
     if (instances.length === 0) return;
 
-    this.drawBranchConnections(
-      parent.eventData.x,
-      parent.eventData.y,
-      instances.map((instance) => ({ x: instance.x, y: instance.y }))
+    const from: Point = {
+      x: parent.eventData.x,
+      y: parent.eventData.y - EVENT_TREE.height / 2,
+    };
+    const curves = instances.map((instance) =>
+      buildBranchCurve(from, {
+        x: instance.x,
+        y: instance.y + EVENT_TREE.height / 2,
+      })
     );
 
-    for (const instance of instances) {
+    const childCircles = instances.map((instance) => {
       const circle = new EventCircle(this, instance);
+      circle.setAlpha(0);
+      circle.setScale(0.2);
       this.treeLayer.add(circle);
       this.eventCircles.push(circle);
-    }
+      return circle;
+    });
+
+    this.growBranches(curves, () => {
+      for (const circle of childCircles) {
+        circle.playSeedReveal();
+      }
+    });
 
     this.ensureEventsVisible(instances);
     this.updateFeelButtonState();
   }
 
-  private drawBranchConnections(
-    parentX: number,
-    parentY: number,
-    children: Array<{ x: number; y: number }>
-  ): void {
-    this.treeGraphics.lineStyle(2, EVENT_COLORS.connector, 0.6);
+  private growBranches(curves: BranchCurve[], onComplete: () => void): void {
+    const growing = curves.map((curve) => ({ curve, progress: 0 }));
+    this.growingBranches.push(...growing);
 
-    if (children.length === 1) {
-      const child = children[0];
-      this.treeGraphics.beginPath();
-      this.treeGraphics.moveTo(parentX, parentY - EVENT_TREE.height / 2);
-      this.treeGraphics.lineTo(child.x, child.y + EVENT_TREE.height / 2);
-      this.treeGraphics.strokePath();
-      return;
+    const state = { t: 0 };
+    this.tweens.add({
+      targets: state,
+      t: 1,
+      duration: EVENT_TREE.branchGrowMs,
+      ease: 'Sine.easeOut',
+      onUpdate: () => {
+        for (const branch of growing) {
+          branch.progress = state.t;
+        }
+        this.redrawBranches();
+      },
+      onComplete: () => {
+        for (const branch of growing) {
+          const index = this.growingBranches.indexOf(branch);
+          if (index >= 0) this.growingBranches.splice(index, 1);
+          this.grownBranches.push(branch.curve);
+        }
+        this.redrawBranches();
+        onComplete();
+      },
+    });
+  }
+
+  private redrawBranches(): void {
+    this.treeGraphics.clear();
+    this.treeGraphics.lineStyle(
+      EVENT_TREE.branchWidth,
+      EVENT_COLORS.connector,
+      0.8
+    );
+
+    for (const [p0, p1, p2, p3] of this.grownBranches) {
+      strokeCubicProgress(this.treeGraphics, p0, p1, p2, p3, 1);
     }
 
-    const junctionY = parentY - EVENT_TREE.levelSpacing * 0.4;
-    const childXs = children.map((child) => child.x);
-    const minX = Math.min(...childXs);
-    const maxX = Math.max(...childXs);
-
-    this.treeGraphics.beginPath();
-    this.treeGraphics.moveTo(parentX, parentY - EVENT_TREE.height / 2);
-    this.treeGraphics.lineTo(parentX, junctionY);
-    this.treeGraphics.moveTo(minX, junctionY);
-    this.treeGraphics.lineTo(maxX, junctionY);
-    this.treeGraphics.strokePath();
-
-    for (const child of children) {
-      this.treeGraphics.beginPath();
-      this.treeGraphics.moveTo(child.x, junctionY);
-      this.treeGraphics.lineTo(child.x, child.y + EVENT_TREE.height / 2);
-      this.treeGraphics.strokePath();
+    for (const { curve, progress } of this.growingBranches) {
+      const [p0, p1, p2, p3] = curve;
+      strokeCubicProgress(this.treeGraphics, p0, p1, p2, p3, progress);
     }
   }
 
@@ -498,7 +535,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (this.draggingCard || this.isPointerOverTopUi(pointer)) {
+    if (this.draggingCard || this.isPointerOverTopUi(pointer) || this.flowerDetailPopup) {
       return;
     }
 
@@ -519,6 +556,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    const eventAtPointer = this.findEventAt(pointer.x, pointer.y);
     this.viewportGesture = {
       type: 'tree-pan',
       pointerId: pointer.id,
@@ -526,6 +564,8 @@ export class GameScene extends Phaser.Scene {
       startY: pointer.y,
       originScrollX: this.treeScrollX,
       originScrollY: this.treeScrollY,
+      flowerTap:
+        eventAtPointer?.eventData.completed === true ? eventAtPointer : null,
     };
   }
 
@@ -626,6 +666,7 @@ export class GameScene extends Phaser.Scene {
           startY: next.y,
           originScrollX: this.treeScrollX,
           originScrollY: this.treeScrollY,
+          flowerTap: null,
         };
         return;
       }
@@ -635,6 +676,15 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (gesture.pointerId === pointer.id) {
+      if (gesture.type === 'tree-pan' && gesture.flowerTap) {
+        const moved = Math.hypot(
+          pointer.x - gesture.startX,
+          pointer.y - gesture.startY
+        );
+        if (moved < 10) {
+          this.showFlowerDetail(gesture.flowerTap);
+        }
+      }
       this.viewportGesture = null;
     }
   }
@@ -741,7 +791,8 @@ export class GameScene extends Phaser.Scene {
   private createTurnDisplay(): void {
     this.turnText = this.add.text(16, 16, this.getTurnLabel(), {
       fontSize: '16px',
-      color: '#ffffff',
+      color: '#3d3428',
+      fontStyle: 'bold',
     });
     this.turnText.setDepth(200);
   }
@@ -871,9 +922,16 @@ export class GameScene extends Phaser.Scene {
 
   private relayoutEventCards(event: EventCircle): void {
     const placed = this.placedCardsByEvent.get(event.eventData.instanceId) ?? [];
-    const thisTurnCount = event.eventData.completed
-      ? 0
-      : event.eventData.cardsPlacedThisTurn;
+
+    if (event.eventData.completed) {
+      for (const card of placed) {
+        card.setVisible(false);
+        card.disableInteractive();
+      }
+      return;
+    }
+
+    const thisTurnCount = event.eventData.cardsPlacedThisTurn;
     const historyCount = Math.max(0, placed.length - thisTurnCount);
     const historyCards = placed.slice(0, historyCount);
     const turnCards = placed.slice(historyCount);
@@ -893,6 +951,14 @@ export class GameScene extends Phaser.Scene {
       if (!slot) return;
       card.placeInEvent(slot.x, slot.y, eventInstanceId, scale, false);
       this.input.setDraggable(card);
+    });
+  }
+
+  private showFlowerDetail(event: EventCircle): void {
+    if (this.flowerDetailPopup || !event.eventData.completed) return;
+
+    this.flowerDetailPopup = new FlowerDetailPopup(this, event.eventData, () => {
+      this.flowerDetailPopup = null;
     });
   }
 
