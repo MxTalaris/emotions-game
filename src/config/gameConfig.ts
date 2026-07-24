@@ -4,8 +4,21 @@ export const GAME_HEIGHT = 600;
 export const CARD_WIDTH = 80;
 export const CARD_HEIGHT = 120;
 export const HAND_Y = GAME_HEIGHT - CARD_HEIGHT / 2 - 20;
-export const HAND_SPACING = 90;
 export const HAND_PADDING = 24;
+export const HAND_CARD_SCALE = 0.78;
+export const HAND_CARD_HOVER_SCALE = 0.92;
+
+/** Radial "spinning wheel" hand layout. */
+export const HAND_WHEEL = {
+  /** Wheel radius in px; larger = flatter arc at the top. */
+  radius: 470,
+  /** Angular gap between adjacent cards, in degrees. */
+  angleStepDeg: 6,
+  /** Drag sensitivity: degrees rotated per pixel dragged horizontally. */
+  degPerPixel: 0.16,
+  /** Wheel sensitivity: degrees rotated per wheel delta unit. */
+  degPerWheel: 0.09,
+};
 
 export const EVENT_TREE = {
   centerX: GAME_WIDTH / 2,

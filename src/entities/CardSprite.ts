@@ -1,5 +1,9 @@
 import Phaser from 'phaser';
-import { CARD_HEIGHT, CARD_WIDTH } from '../config/gameConfig';
+import {
+  CARD_HEIGHT,
+  CARD_WIDTH,
+  HAND_CARD_HOVER_SCALE,
+} from '../config/gameConfig';
 import { getSuitColor } from '../data/cards';
 import { CardInstance } from '../types';
 
@@ -9,8 +13,12 @@ export class CardSprite extends Phaser.GameObjects.Container {
   private label: Phaser.GameObjects.Text;
   private homeX: number;
   private homeY: number;
+  private homeRotation = 0;
+  private handScale = 1;
   private placed = false;
   private committed = false;
+  private draggedSincePointerDown = false;
+  private previewHandler: (() => void) | null = null;
 
   constructor(
     scene: Phaser.Scene,
@@ -49,6 +57,37 @@ export class CardSprite extends Phaser.GameObjects.Container {
     this.setInteractive({ draggable: true, useHandCursor: true });
     this.setDepth(40);
 
+    this.on('pointerdown', () => {
+      this.draggedSincePointerDown = false;
+    });
+    this.on('pointerover', () => {
+      if (this.placed || this.draggedSincePointerDown) return;
+      this.scene.tweens.killTweensOf(this);
+      this.scene.tweens.add({
+        targets: this,
+        scale: HAND_CARD_HOVER_SCALE,
+        duration: 120,
+        ease: 'Sine.easeOut',
+      });
+      this.setDepth(90);
+    });
+    this.on('pointerout', () => {
+      if (this.placed || this.draggedSincePointerDown) return;
+      this.scene.tweens.killTweensOf(this);
+      this.scene.tweens.add({
+        targets: this,
+        scale: this.handScale,
+        duration: 120,
+        ease: 'Sine.easeOut',
+      });
+      this.setDepth(40);
+    });
+    this.on('pointerup', () => {
+      if (!this.placed && !this.draggedSincePointerDown) {
+        this.previewHandler?.();
+      }
+    });
+
     scene.add.existing(this);
   }
 
@@ -69,13 +108,22 @@ export class CardSprite extends Phaser.GameObjects.Container {
     return { x: this.homeX, y: this.homeY };
   }
 
-  setHomePosition(x: number, y: number): void {
+  setPreviewHandler(handler: () => void): void {
+    this.previewHandler = handler;
+  }
+
+  setHomePose(x: number, y: number, rotation: number, scale: number): void {
     this.homeX = x;
     this.homeY = y;
+    this.homeRotation = rotation;
+    this.handScale = scale;
   }
 
   onDragStart(): void {
+    this.draggedSincePointerDown = true;
+    this.scene.tweens.killTweensOf(this);
     this.setScale(1.05);
+    this.setRotation(0);
     this.setDepth(100);
   }
 
@@ -84,7 +132,8 @@ export class CardSprite extends Phaser.GameObjects.Container {
       targets: this,
       x: this.homeX,
       y: this.homeY,
-      scale: 1,
+      scale: this.handScale,
+      rotation: this.homeRotation,
       duration: 200,
       ease: 'Power2',
     });
@@ -124,7 +173,8 @@ export class CardSprite extends Phaser.GameObjects.Container {
     this.committed = false;
     this.cardData.eventInstanceId = undefined;
     this.setInteractive({ draggable: true, useHandCursor: true });
-    this.setScale(1);
+    this.setScale(this.handScale);
+    this.setRotation(this.homeRotation);
     this.setDepth(100);
   }
 }

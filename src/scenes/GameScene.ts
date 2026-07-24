@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { CardPreviewPopup } from '../entities/CardPreviewPopup';
 import { CardSprite } from '../entities/CardSprite';
 import { EventCircle } from '../entities/EventCircle';
 import { FeelButton } from '../entities/FeelButton';
@@ -32,15 +33,14 @@ import {
 } from '../types';
 import {
   CARD_HEIGHT,
-  CARD_WIDTH,
   EVENT_COLORS,
   EVENT_TREE,
   EVENT_VIEW_TOP,
   FEEL_BUTTON,
   GAME_HEIGHT,
   GAME_WIDTH,
-  HAND_PADDING,
-  HAND_SPACING,
+  HAND_CARD_SCALE,
+  HAND_WHEEL,
   HAND_Y,
   MUSIC_BUTTON,
   TREE_ZOOM,
@@ -109,6 +109,7 @@ export class GameScene extends Phaser.Scene {
   private personalityClouds: PersonalityCloud[] = [];
   private endGameOverlay: Phaser.GameObjects.Container | null = null;
   private flowerDetailPopup: FlowerDetailPopup | null = null;
+  private cardPreviewPopup: CardPreviewPopup | null = null;
   private launchSeedId: string | null = null;
   private launchSelectedPersonalities: PersonalityId[] = [];
 
@@ -158,6 +159,7 @@ export class GameScene extends Phaser.Scene {
     this.personalityClouds = [];
     this.endGameOverlay = null;
     this.flowerDetailPopup = null;
+    this.cardPreviewPopup = null;
     this.bgm = null;
     this.musicEnabled = false;
 
@@ -406,19 +408,18 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private getHandContentWidth(): number {
-    if (this.handCards.length === 0) return 0;
-    return CARD_WIDTH + Math.max(0, this.handCards.length - 1) * HAND_SPACING;
+  private getHandCenterIndex(): number {
+    return (this.handCards.length - 1) / 2;
   }
 
+  /** Max rotation (degrees) so the outermost card can reach the top center. */
   private getMaxHandScroll(): number {
-    const viewWidth = GAME_WIDTH - HAND_PADDING * 2;
-    return Math.max(0, this.getHandContentWidth() - viewWidth);
+    return this.getHandCenterIndex() * HAND_WHEEL.angleStepDeg;
   }
 
-  private setHandScroll(scrollX: number): void {
+  private setHandScroll(scrollDeg: number): void {
     const maxScroll = this.getMaxHandScroll();
-    this.handScrollX = Phaser.Math.Clamp(scrollX, -maxScroll, 0);
+    this.handScrollX = Phaser.Math.Clamp(scrollDeg, -maxScroll, maxScroll);
     this.relayoutHand();
   }
 
@@ -495,7 +496,7 @@ export class GameScene extends Phaser.Scene {
         if (this.isPointerOverHand(pointer)) {
           if (this.getMaxHandScroll() <= 0) return;
           const delta = Math.abs(deltaX) > Math.abs(deltaY) ? deltaX : deltaY;
-          this.setHandScroll(this.handScrollX - delta * 0.45);
+          this.setHandScroll(this.handScrollX - delta * HAND_WHEEL.degPerWheel);
           return;
         }
 
@@ -535,7 +536,12 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (this.draggingCard || this.isPointerOverTopUi(pointer) || this.flowerDetailPopup) {
+    if (
+      this.draggingCard ||
+      this.isPointerOverTopUi(pointer) ||
+      this.flowerDetailPopup ||
+      this.cardPreviewPopup
+    ) {
       return;
     }
 
@@ -634,7 +640,10 @@ export class GameScene extends Phaser.Scene {
     if (gesture.pointerId !== pointer.id || !pointer.isDown) return;
 
     if (gesture.type === 'hand-pan') {
-      this.setHandScroll(gesture.originScrollX + (pointer.x - gesture.startX));
+      this.setHandScroll(
+        gesture.originScrollX +
+          (pointer.x - gesture.startX) * HAND_WHEEL.degPerPixel
+      );
       return;
     }
 
@@ -743,6 +752,7 @@ export class GameScene extends Phaser.Scene {
     for (let i = 0; i < deficit; i++) {
       const instance = createCardInstance(APATHY_CARD);
       const card = new CardSprite(this, GAME_WIDTH / 2, HAND_Y, instance);
+      this.setupHandCard(card);
       this.input.setDraggable(card);
       this.handCards.push(card);
     }
@@ -809,6 +819,7 @@ export class GameScene extends Phaser.Scene {
     this.handCards = getInitialHandCards().map((definition) => {
       const instance = createCardInstance(definition);
       const card = new CardSprite(this, GAME_WIDTH / 2, HAND_Y, instance);
+      this.setupHandCard(card);
       this.input.setDraggable(card);
       return card;
     });
@@ -896,6 +907,7 @@ export class GameScene extends Phaser.Scene {
     this.treeLayer.remove(card);
     this.add.existing(card);
     card.prepareRecall();
+    this.setupHandCard(card);
     card.setPosition(pointer.x, pointer.y);
 
     if (!this.handCards.includes(card)) {
@@ -979,24 +991,40 @@ export class GameScene extends Phaser.Scene {
   }
 
   private relayoutHand(): void {
-    const contentWidth = Math.max(0, (this.handCards.length - 1) * HAND_SPACING);
     const maxScroll = this.getMaxHandScroll();
+    this.handScrollX = Phaser.Math.Clamp(this.handScrollX, -maxScroll, maxScroll);
 
-    let startX: number;
-    if (maxScroll <= 0) {
-      this.handScrollX = 0;
-      startX = GAME_WIDTH / 2 - contentWidth / 2;
-    } else {
-      this.handScrollX = Phaser.Math.Clamp(this.handScrollX, -maxScroll, 0);
-      startX = HAND_PADDING + CARD_WIDTH / 2 + this.handScrollX;
-    }
+    const centerIndex = this.getHandCenterIndex();
+    const wheelCenterX = GAME_WIDTH / 2;
+    const wheelCenterY = HAND_Y + HAND_WHEEL.radius;
 
     this.handCards.forEach((card, index) => {
-      const x = startX + index * HAND_SPACING;
-      card.setHomePosition(x, HAND_Y);
+      const angleDeg =
+        (index - centerIndex) * HAND_WHEEL.angleStepDeg + this.handScrollX;
+      const angle = Phaser.Math.DegToRad(angleDeg);
+      const x = wheelCenterX + HAND_WHEEL.radius * Math.sin(angle);
+      const y = wheelCenterY - HAND_WHEEL.radius * Math.cos(angle);
+
+      card.setHomePose(x, y, angle, HAND_CARD_SCALE);
       if (card !== this.draggingCard) {
-        card.setPosition(x, HAND_Y);
+        card.setPosition(x, y);
+        card.setRotation(angle);
+        card.setScale(HAND_CARD_SCALE);
+        // Cards nearer the top center render above the ones curving away.
+        card.setDepth(40 + Math.round(100 - Math.abs(angleDeg)));
       }
+    });
+  }
+
+  private setupHandCard(card: CardSprite): void {
+    card.setPreviewHandler(() => this.showCardPreview(card));
+  }
+
+  private showCardPreview(card: CardSprite): void {
+    if (this.cardPreviewPopup || this.flowerDetailPopup || card.isPlaced) return;
+
+    this.cardPreviewPopup = new CardPreviewPopup(this, card.cardData, () => {
+      this.cardPreviewPopup = null;
     });
   }
 
@@ -1005,6 +1033,7 @@ export class GameScene extends Phaser.Scene {
     for (const definition of definitions) {
       const instance = createCardInstance(definition);
       const card = new CardSprite(this, GAME_WIDTH / 2, HAND_Y, instance);
+      this.setupHandCard(card);
       this.input.setDraggable(card);
       this.handCards.push(card);
     }
@@ -1096,6 +1125,7 @@ export class GameScene extends Phaser.Scene {
     this.ensureApathyHandForRequiredSlots();
     this.updateFeelButtonState();
     this.updateTurnDisplay();
+    this.setHandScroll(0);
   }
 
   private grantEventRewardCards(event: EventCircle): void {
