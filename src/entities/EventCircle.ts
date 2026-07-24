@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { CARD_HEIGHT, CARD_WIDTH, EVENT_COLORS, EVENT_TREE } from '../config/gameConfig';
-import { getCardById } from '../data/cards';
-import { GameEventInstance } from '../types';
+import { getCardByAlias } from '../data/cards';
+import { resolveModifiedCardEnergy } from '../systems/resolveModifiedCardEnergy';
+import { CardAlias, EventCompletionCause, GameEventInstance } from '../types';
 
 const ENERGY_BAR_HEIGHT = 10;
 const ENERGY_BAR_PADDING_X = 8;
@@ -95,7 +96,7 @@ export class EventCircle extends Phaser.GameObjects.Container {
     const bottom = this.getCardSlotsBottom();
     const historyCount = Math.max(
       0,
-      this.eventData.placedCardIds.length - this.eventData.cardsPlacedThisTurn
+      this.eventData.placedCardAliases.length - this.eventData.cardsPlacedThisTurn
     );
     const stripWidth = Math.max(
       this.getCardStripWidth(this.eventData.cardsPerTurn),
@@ -152,13 +153,13 @@ export class EventCircle extends Phaser.GameObjects.Container {
     return this.eventData.cardsPlacedThisTurn >= this.eventData.cardsPerTurn;
   }
 
-  addCard(cardId: number): void {
+  addCard(alias: CardAlias): void {
     if (!this.canAcceptCard()) return;
 
-    const card = getCardById(cardId);
-    const energy = card?.energyAmount ?? 0;
+    const card = getCardByAlias(alias);
+    const energy = resolveModifiedCardEnergy(card, this.eventData.modifiers);
 
-    this.eventData.placedCardIds.push(cardId);
+    this.eventData.placedCardAliases.push(alias);
     this.eventData.progress += energy;
     this.eventData.cardsPlacedThisTurn += 1;
     this.refreshSlotDots();
@@ -166,18 +167,18 @@ export class EventCircle extends Phaser.GameObjects.Container {
     this.updateVisualState();
   }
 
-  /** Removes a this-turn card by index in placedCardIds. History cards cannot be removed. */
+  /** Removes a this-turn card by index in placedCardAliases. History cards cannot be removed. */
   removeCardAt(index: number): boolean {
-    const { placedCardIds, cardsPlacedThisTurn } = this.eventData;
-    const historyCount = placedCardIds.length - cardsPlacedThisTurn;
+    const { placedCardAliases, cardsPlacedThisTurn } = this.eventData;
+    const historyCount = placedCardAliases.length - cardsPlacedThisTurn;
 
-    if (index < historyCount || index >= placedCardIds.length) {
+    if (index < historyCount || index >= placedCardAliases.length) {
       return false;
     }
 
-    const [cardId] = placedCardIds.splice(index, 1);
-    const card = getCardById(cardId);
-    const energy = card?.energyAmount ?? 0;
+    const [alias] = placedCardAliases.splice(index, 1);
+    const card = getCardByAlias(alias);
+    const energy = resolveModifiedCardEnergy(card, this.eventData.modifiers);
 
     this.eventData.progress = Math.max(0, this.eventData.progress - energy);
     this.eventData.cardsPlacedThisTurn = Math.max(
@@ -218,10 +219,14 @@ export class EventCircle extends Phaser.GameObjects.Container {
     );
   }
 
-  complete(): void {
+  complete(cause: EventCompletionCause = 'energy', dealBreakerAlias?: string): void {
     if (this.eventData.completed) return;
 
     this.eventData.completed = true;
+    this.eventData.completionCause = cause;
+    if (dealBreakerAlias) {
+      this.eventData.matchedDealBreakerAlias = dealBreakerAlias;
+    }
     this.updateVisualState();
     this.refreshSlotDots();
     this.refreshTurnsText();

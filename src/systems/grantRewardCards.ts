@@ -1,8 +1,8 @@
-import { getCardById } from '../data/cards';
-import { CardDefinition } from '../types';
+import { getCardByAlias } from '../data/cards';
+import { CardAlias, CardDefinition } from '../types';
 
-export function resolveRewardCards(cardIds: number[]): CardDefinition[] {
-  return cardIds
-    .map((id) => getCardById(id))
+export function resolveRewardCards(aliases: CardAlias[]): CardDefinition[] {
+  return aliases
+    .map((alias) => getCardByAlias(alias))
     .filter((card): card is CardDefinition => card !== undefined);
 }

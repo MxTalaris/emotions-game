@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { CARD_HEIGHT, CARD_WIDTH, SUIT_COLORS } from '../config/gameConfig';
+import { CARD_HEIGHT, CARD_WIDTH } from '../config/gameConfig';
+import { getSuitColor } from '../data/cards';
 import { CardInstance } from '../types';
 
 export class CardSprite extends Phaser.GameObjects.Container {
@@ -23,7 +24,7 @@ export class CardSprite extends Phaser.GameObjects.Container {
     this.homeX = x;
     this.homeY = y;
 
-    const color = SUIT_COLORS[cardData.suit] ?? 0x888888;
+    const color = getSuitColor(cardData.suit);
 
     this.background = scene.add.rectangle(0, 0, CARD_WIDTH, CARD_HEIGHT, color);
     this.background.setStrokeStyle(2, 0xffffff);
@@ -93,13 +94,13 @@ export class CardSprite extends Phaser.GameObjects.Container {
   placeInEvent(
     x: number,
     y: number,
-    eventId: number,
+    eventInstanceId: number,
     scale: number,
     committed: boolean
   ): void {
     this.placed = true;
     this.committed = committed;
-    this.cardData.eventId = eventId;
+    this.cardData.eventInstanceId = eventInstanceId;
 
     if (committed) {
       this.disableInteractive();
@@ -121,7 +122,7 @@ export class CardSprite extends Phaser.GameObjects.Container {
   prepareRecall(): void {
     this.placed = false;
     this.committed = false;
-    this.cardData.eventId = undefined;
+    this.cardData.eventInstanceId = undefined;
     this.setInteractive({ draggable: true, useHandCursor: true });
     this.setScale(1);
     this.setDepth(100);

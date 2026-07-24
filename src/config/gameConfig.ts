@@ -7,13 +7,6 @@ export const HAND_Y = GAME_HEIGHT - CARD_HEIGHT / 2 - 20;
 export const HAND_SPACING = 90;
 export const HAND_PADDING = 24;
 
-export const SUIT_COLORS: Record<string, number> = {
-  positive: 0x4caf50,
-  negative: 0xe53935,
-  neutral: 0xffa726,
-  apathy: 0x9e9e9e,
-};
-
 export const EVENT_TREE = {
   centerX: GAME_WIDTH / 2,
   baseY: 360,
@@ -60,4 +53,10 @@ export const FEEL_BUTTON = {
   y: 36,
   width: 120,
   height: 44,
+};
+
+export const MUSIC_BUTTON = {
+  x: GAME_WIDTH - 160,
+  y: 36,
+  size: 44,
 };

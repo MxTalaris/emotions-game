@@ -7,20 +7,23 @@ export interface TreePosition {
   depth: number;
 }
 
+let nextEventInstanceId = 1;
+
 export function createEventInstance(
   template: GameEventDefinition,
   position: TreePosition,
-  parentId?: number
+  parentInstanceId?: number
 ): GameEventInstance {
   return {
     ...template,
+    instanceId: nextEventInstanceId++,
     x: position.x,
     y: position.y,
     width: EVENT_TREE.width,
     height: EVENT_TREE.height,
     depth: position.depth,
-    parentId,
-    placedCardIds: [],
+    parentInstanceId,
+    placedCardAliases: [],
     progress: 0,
     cardsPlacedThisTurn: 0,
     turnsAlive: 0,

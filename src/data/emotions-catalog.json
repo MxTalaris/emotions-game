@@ -1,0 +1,83 @@
+{
+  "joy": {
+    "color": "#FDD835",
+    "cards": [
+      { "id": "joy-basic", "name": "Joy", "energy": 10, "duration": 0, "fadedEmotion": null },
+      { "id": "joy-fun", "name": "Fun", "energy": 15, "duration": 2, "fadedEmotion": ["joy-basic"] },
+      { "id": "joy-confidence", "name": "Confidence", "energy": 15, "duration": 3, "fadedEmotion": ["joy-basic"] },
+      { "id": "joy-mellow", "name": "Mellow", "energy": 1, "duration": 0, "fadedEmotion": null },
+      { "id": "joy-gratitude", "name": "Gratitude", "energy": 20, "duration": 3, "fadedEmotion": ["sad-nostalgia"] },
+      { "id": "joy-eager", "name": "Eager", "energy": 20, "duration": 2, "fadedEmotion": ["anger-frustration"] },
+      { "id": "joy-achievement", "name": "Achievement", "energy": 25, "duration": 3, "fadedEmotion": ["fear-basic"] },
+      { "id": "joy-indulgence", "name": "Indulgence", "energy": 20, "duration": 3, "fadedEmotion": ["disgust-aversion"] },
+      { "id": "joy-acceptance", "name": "Acceptance", "energy": 5, "duration": 5, "fadedEmotion": null },
+      { "id": "joy-bliss", "name": "Bliss", "energy": 35, "duration": 4, "fadedEmotion": ["joy-basic", "joy-basic"] }
+    ]
+  },
+  "sadness": {
+    "color": "#1E88E5",
+    "cards": [
+      { "id": "sad-basic", "name": "Sadness", "energy": 10, "duration": 0, "fadedEmotion": null },
+      { "id": "sad-melancholy", "name": "Melancholy", "energy": 15, "duration": 2, "fadedEmotion": ["sad-basic"] },
+      { "id": "sad-nostalgia", "name": "Nostalgia", "energy": 15, "duration": 3, "fadedEmotion": ["sad-basic"] },
+      { "id": "sad-depression", "name": "Depression", "energy": 1, "duration": 0, "fadedEmotion": null },
+      { "id": "sad-loss", "name": "Loss", "energy": 20, "duration": 3, "fadedEmotion": ["joy-acceptance"] },
+      { "id": "sad-bitterness", "name": "Bitterness", "energy": 20, "duration": 3, "fadedEmotion": ["anger-basic"] },
+      { "id": "sad-isolation", "name": "Isolation", "energy": 20, "duration": 3, "fadedEmotion": ["fear-fomo"] },
+      { "id": "sad-failure", "name": "Failure", "energy": 20, "duration": 3, "fadedEmotion": ["disgust-restlessness"] },
+      { "id": "sad-gloom", "name": "Gloom", "energy": 5, "duration": 5, "fadedEmotion": null },
+      { "id": "sad-despair", "name": "Despair", "energy": 35, "duration": 4, "fadedEmotion": ["sad-basic", "sad-basic"] }
+    ]
+  },
+  "anger": {
+    "color": "#E53935",
+    "cards": [
+      { "id": "anger-basic", "name": "Anger", "energy": 10, "duration": 0, "fadedEmotion": null },
+      { "id": "anger-frustration", "name": "Frustration", "energy": 15, "duration": 2, "fadedEmotion": ["anger-basic"] },
+      { "id": "anger-boredom", "name": "Boredom", "energy": 15, "duration": 3, "fadedEmotion": ["anger-basic"] },
+      { "id": "anger-distress", "name": "Distress", "energy": 1, "duration": 0, "fadedEmotion": null },
+      { "id": "anger-eustress", "name": "Eustress", "energy": 20, "duration": 3, "fadedEmotion": ["joy-basic"] },
+      { "id": "anger-jealously", "name": "Jealously", "energy": 20, "duration": 3, "fadedEmotion": ["sad-gloom"] },
+      { "id": "anger-indignation", "name": "Indignation", "energy": 20, "duration": 3, "fadedEmotion": ["fear-bargaining"] },
+      { "id": "anger-contempt", "name": "Contempt", "energy": 20, "duration": 3, "fadedEmotion": ["disgust-reclusion"] },
+      { "id": "anger-annoyance", "name": "Annoyance", "energy": 5, "duration": 5, "fadedEmotion": null },
+      { "id": "anger-rage", "name": "Rage", "energy": 35, "duration": 4, "fadedEmotion": ["anger-basic", "anger-basic"] }
+    ]
+  },
+  "fear": {
+    "color": "#8E24AA",
+    "cards": [
+      { "id": "fear-basic", "name": "Fear", "energy": 10, "duration": 0, "fadedEmotion": null },
+      { "id": "fear-fomo", "name": "FOMO", "energy": 15, "duration": 2, "fadedEmotion": ["fear-basic"] },
+      { "id": "fear-fright", "name": "Fright", "energy": 15, "duration": 3, "fadedEmotion": ["fear-basic"] },
+      { "id": "fear-panic", "name": "Panic", "energy": 1, "duration": 0, "fadedEmotion": null },
+      { "id": "fear-thrill", "name": "Thrill", "energy": 20, "duration": 3, "fadedEmotion": ["joy-fun"] },
+      { "id": "fear-bargaining", "name": "Bargaining", "energy": 20, "duration": 3, "fadedEmotion": ["sad-loss"] },
+      { "id": "fear-anxiety", "name": "Anxiety", "energy": 20, "duration": 3, "fadedEmotion": ["anger-annoyance"] },
+      { "id": "fear-insecurity", "name": "Insecurity", "energy": 20, "duration": 3, "fadedEmotion": ["disgust-basic"] },
+      { "id": "fear-avoidance", "name": "Avoidance", "energy": 5, "duration": 5, "fadedEmotion": null },
+      { "id": "fear-terror", "name": "Terror", "energy": 35, "duration": 4, "fadedEmotion": ["fear-basic", "fear-basic"] }
+    ]
+  },
+  "disgust": {
+    "color": "#43A047",
+    "cards": [
+      { "id": "disgust-basic", "name": "Disgust", "energy": 10, "duration": 0, "fadedEmotion": null },
+      { "id": "disgust-reclusion", "name": "Reclusion", "energy": 15, "duration": 2, "fadedEmotion": ["disgust-basic"] },
+      { "id": "disgust-restlessness", "name": "Restlessness", "energy": 15, "duration": 3, "fadedEmotion": ["disgust-basic"] },
+      { "id": "disgust-nausea", "name": "Nausea", "energy": 1, "duration": 0, "fadedEmotion": null },
+      { "id": "disgust-oddness", "name": "Oddness", "energy": 20, "duration": 3, "fadedEmotion": ["joy-fun"] },
+      { "id": "disgust-pity", "name": "Pity", "energy": 20, "duration": 3, "fadedEmotion": ["sad-basic"] },
+      { "id": "disgust-denial", "name": "Denial", "energy": 20, "duration": 3, "fadedEmotion": ["anger-indignation"] },
+      { "id": "disgust-repulse", "name": "Repulse", "energy": 20, "duration": 3, "fadedEmotion": ["fear-avoidance"] },
+      { "id": "disgust-aversion", "name": "Aversion", "energy": 5, "duration": 5, "fadedEmotion": null },
+      { "id": "disgust-revolt", "name": "Revolt", "energy": 35, "duration": 4, "fadedEmotion": ["disgust-basic", "disgust-basic"] }
+    ]
+  },
+  "apathy": {
+    "color": "#9E9E9E",
+    "cards": [
+      { "id": "apathy-basic", "name": "Apathy", "energy": 10, "duration": 1, "fadedEmotion": null }
+    ]
+  }
+}

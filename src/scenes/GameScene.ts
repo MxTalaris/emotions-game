@@ -2,15 +2,26 @@ import Phaser from 'phaser';
 import { CardSprite } from '../entities/CardSprite';
 import { EventCircle } from '../entities/EventCircle';
 import { FeelButton } from '../entities/FeelButton';
+import { MusicToggleButton } from '../entities/MusicToggleButton';
 import { EventManager } from '../systems/EventManager';
 import { resolveRewardCards } from '../systems/grantRewardCards';
+import { resolveEventOutputEmotions } from '../systems/resolveEventOutputs';
 import {
-  findEventsDueForAutoComplete,
-  findEventsReadyToProcess,
+  selectEventResults,
+  shouldOverrideOutputsFromResults,
+} from '../systems/resolveEventResults';
+import {
+  findEventsCompletingThisSentir,
   findEventsWithFeelingsThisTurn,
 } from '../systems/processFeelings';
 import { TurnManager } from '../systems/TurnManager';
-import { createCardInstance, GameEventInstance } from '../types';
+import {
+  CardAlias,
+  createCardInstance,
+  EventAction,
+  EventResult,
+  GameEventInstance,
+} from '../types';
 import {
   CARD_HEIGHT,
   CARD_WIDTH,
@@ -23,11 +34,11 @@ import {
   HAND_PADDING,
   HAND_SPACING,
   HAND_Y,
+  MUSIC_BUTTON,
   TREE_ZOOM,
 } from '../config/gameConfig';
-import { APATHY_CARD, cards } from '../data/cards';
+import { APATHY_CARD, getInitialHandCards } from '../data/cards';
 
-const INITIAL_HAND_SIZE = 5;
 const TREE_LABEL_OFFSET = 30;
 
 type ViewportGesture =
@@ -71,8 +82,10 @@ export class GameScene extends Phaser.Scene {
   private handScrollX = 0;
   private viewportGesture: ViewportGesture | null = null;
   private feelButton!: FeelButton;
+  private musicButton!: MusicToggleButton;
   private turnText!: Phaser.GameObjects.Text;
   private bgm: Phaser.Sound.BaseSound | null = null;
+  private musicEnabled = false;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -95,6 +108,7 @@ export class GameScene extends Phaser.Scene {
     this.createEvents();
     this.createHand();
     this.createFeelButton();
+    this.createMusicButton();
     this.createTurnDisplay();
     this.setupDragAndDrop();
     this.setupScroll();
@@ -105,7 +119,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private setupBackgroundMusic(): void {
-    if (this.bgm?.isPlaying) return;
+    if (this.bgm) return;
 
     this.bgm = this.sound.add('bgm-chill', {
       loop: true,
@@ -113,7 +127,7 @@ export class GameScene extends Phaser.Scene {
     });
 
     const tryPlay = () => {
-      if (!this.bgm || this.bgm.isPlaying) return;
+      if (!this.bgm || !this.musicEnabled || this.bgm.isPlaying) return;
       this.sound.unlock();
       this.bgm.play();
     };
@@ -121,6 +135,24 @@ export class GameScene extends Phaser.Scene {
     // Browsers often block autoplay until a user gesture.
     tryPlay();
     this.input.once('pointerdown', tryPlay);
+  }
+
+  private setMusicEnabled(enabled: boolean): void {
+    this.musicEnabled = enabled;
+
+    if (!this.bgm) return;
+
+    if (enabled) {
+      this.sound.unlock();
+      if (!this.bgm.isPlaying) {
+        this.bgm.play();
+      }
+      return;
+    }
+
+    if (this.bgm.isPlaying) {
+      this.bgm.pause();
+    }
   }
 
   private createEvents(): void {
@@ -318,6 +350,13 @@ export class GameScene extends Phaser.Scene {
     );
   }
 
+  private isPointerOverTopUi(pointer: Phaser.Input.Pointer): boolean {
+    return (
+      this.isPointerOverFeelButton(pointer) ||
+      this.musicButton.containsPoint(pointer.x, pointer.y)
+    );
+  }
+
   private isPointerOverHandCard(pointer: Phaser.Input.Pointer): boolean {
     return this.handCards.some((card) => {
       if (card.isPlaced) return false;
@@ -409,7 +448,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (this.draggingCard || this.isPointerOverFeelButton(pointer)) {
+    if (this.draggingCard || this.isPointerOverTopUi(pointer)) {
       return;
     }
 
@@ -562,6 +601,17 @@ export class GameScene extends Phaser.Scene {
     this.feelButton.setDepth(200);
   }
 
+  private createMusicButton(): void {
+    this.musicButton = new MusicToggleButton(this, {
+      x: MUSIC_BUTTON.x,
+      y: MUSIC_BUTTON.y,
+      size: MUSIC_BUTTON.size,
+      enabled: false,
+      onToggle: (enabled) => this.setMusicEnabled(enabled),
+    });
+    this.musicButton.setDepth(200);
+  }
+
   private canPressFeel(): boolean {
     return !this.eventCircles.some((event) => event.needsRequiredCard());
   }
@@ -615,12 +665,12 @@ export class GameScene extends Phaser.Scene {
       instance
     );
 
-    event.addCard(APATHY_CARD.id);
+    event.addCard(APATHY_CARD.alias);
 
-    const eventId = event.eventData.id;
-    const placed = this.placedCardsByEvent.get(eventId) ?? [];
+    const eventInstanceId = event.eventData.instanceId;
+    const placed = this.placedCardsByEvent.get(eventInstanceId) ?? [];
     placed.push(card);
-    this.placedCardsByEvent.set(eventId, placed);
+    this.placedCardsByEvent.set(eventInstanceId, placed);
 
     this.treeLayer.add(card);
     this.relayoutEventCards(event);
@@ -655,9 +705,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createHand(): void {
-    const handCards = cards.slice(0, INITIAL_HAND_SIZE);
-
-    this.handCards = handCards.map((definition) => {
+    this.handCards = getInitialHandCards().map((definition) => {
       const instance = createCardInstance(definition);
       const card = new CardSprite(this, GAME_WIDTH / 2, HAND_Y, instance);
       this.input.setDraggable(card);
@@ -711,7 +759,7 @@ export class GameScene extends Phaser.Scene {
         const targetEvent = this.findEventAt(card.x, card.y);
 
         if (targetEvent?.canAcceptCard()) {
-          targetEvent.addCard(card.cardData.id);
+          targetEvent.addCard(card.cardData.alias);
           this.placeCardOnEvent(card, targetEvent);
           this.removeFromHand(card);
           this.updateFeelButtonState();
@@ -728,19 +776,21 @@ export class GameScene extends Phaser.Scene {
     card: CardSprite,
     pointer: Phaser.Input.Pointer
   ): void {
-    const eventId = card.cardData.eventId;
-    if (eventId == null) return;
+    const eventInstanceId = card.cardData.eventInstanceId;
+    if (eventInstanceId == null) return;
 
-    const event = this.eventCircles.find((item) => item.eventData.id === eventId);
+    const event = this.eventCircles.find(
+      (item) => item.eventData.instanceId === eventInstanceId
+    );
     if (!event || event.eventData.completed) return;
 
-    const placed = this.placedCardsByEvent.get(eventId) ?? [];
+    const placed = this.placedCardsByEvent.get(eventInstanceId) ?? [];
     const index = placed.indexOf(card);
     if (index < 0) return;
     if (!event.removeCardAt(index)) return;
 
     placed.splice(index, 1);
-    this.placedCardsByEvent.set(eventId, placed);
+    this.placedCardsByEvent.set(eventInstanceId, placed);
 
     this.treeLayer.remove(card);
     this.add.existing(card);
@@ -761,16 +811,16 @@ export class GameScene extends Phaser.Scene {
     this.treeLayer.add(card);
     card.setPosition(local.x, local.y);
 
-    const eventId = event.eventData.id;
-    const placed = this.placedCardsByEvent.get(eventId) ?? [];
+    const eventInstanceId = event.eventData.instanceId;
+    const placed = this.placedCardsByEvent.get(eventInstanceId) ?? [];
     placed.push(card);
-    this.placedCardsByEvent.set(eventId, placed);
+    this.placedCardsByEvent.set(eventInstanceId, placed);
 
     this.relayoutEventCards(event);
   }
 
   private relayoutEventCards(event: EventCircle): void {
-    const placed = this.placedCardsByEvent.get(event.eventData.id) ?? [];
+    const placed = this.placedCardsByEvent.get(event.eventData.instanceId) ?? [];
     const thisTurnCount = event.eventData.completed
       ? 0
       : event.eventData.cardsPlacedThisTurn;
@@ -778,20 +828,20 @@ export class GameScene extends Phaser.Scene {
     const historyCards = placed.slice(0, historyCount);
     const turnCards = placed.slice(historyCount);
     const scale = event.placedCardScale;
-    const eventId = event.eventData.id;
+    const eventInstanceId = event.eventData.instanceId;
 
     const historySlots = event.getHistoryCardPositions(historyCards.length);
     historyCards.forEach((card, index) => {
       const slot = historySlots[index];
       if (!slot) return;
-      card.placeInEvent(slot.x, slot.y, eventId, scale, true);
+      card.placeInEvent(slot.x, slot.y, eventInstanceId, scale, true);
     });
 
     const turnSlots = event.getTurnSlotPositions();
     turnCards.forEach((card, index) => {
       const slot = turnSlots[index];
       if (!slot) return;
-      card.placeInEvent(slot.x, slot.y, eventId, scale, false);
+      card.placeInEvent(slot.x, slot.y, eventInstanceId, scale, false);
       this.input.setDraggable(card);
     });
   }
@@ -834,9 +884,8 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private addCardsToHand(cardIds: number[]): void {
-    const definitions = resolveRewardCards(cardIds);
-
+  private addCardsToHand(aliases: CardAlias[]): void {
+    const definitions = resolveRewardCards(aliases);
     for (const definition of definitions) {
       const instance = createCardInstance(definition);
       const card = new CardSprite(this, GAME_WIDTH / 2, HAND_Y, instance);
@@ -855,11 +904,60 @@ export class GameScene extends Phaser.Scene {
   private processFeelings(): void {
     if (!this.canPressFeel()) return;
 
+    const pendingBatches = this.eventManager.tickPendingSpawns((instanceId) =>
+      this.eventCircles.find((circle) => circle.eventData.instanceId === instanceId)
+        ?.eventData
+    );
+    for (const batch of pendingBatches) {
+      const parentCircle = this.eventCircles.find(
+        (circle) => circle.eventData.instanceId === batch.parent.instanceId
+      );
+      if (parentCircle) {
+        this.spawnEvents(parentCircle, batch.children);
+      }
+    }
+
     this.autoAllocateApathyToOptionalEvents();
 
-    const feltEvents = findEventsWithFeelingsThisTurn(this.eventCircles);
-    for (const event of feltEvents) {
+    const feltIds = new Set(
+      findEventsWithFeelingsThisTurn(this.eventCircles).map(
+        (event) => event.eventData.instanceId
+      )
+    );
+    const completing = findEventsCompletingThisSentir(this.eventCircles);
+    const completingIds = new Set(
+      completing.map((item) => item.event.eventData.instanceId)
+    );
+
+    for (const event of this.eventCircles) {
+      if (!feltIds.has(event.eventData.instanceId)) continue;
+      if (completingIds.has(event.eventData.instanceId)) continue;
       this.grantEventRewardCards(event);
+    }
+
+    const completions: Array<{
+      event: EventCircle;
+      cause: (typeof completing)[number]['cause'];
+      dealBreakerAlias?: string;
+      selectedResults: EventResult[];
+    }> = [];
+
+    for (const item of completing) {
+      const { event, cause, dealBreakerAlias } = item;
+      event.eventData.completionCause = cause;
+      if (dealBreakerAlias) {
+        event.eventData.matchedDealBreakerAlias = dealBreakerAlias;
+      }
+
+      const selectedResults = selectEventResults(event.eventData);
+      if (
+        feltIds.has(event.eventData.instanceId) &&
+        !shouldOverrideOutputsFromResults(selectedResults)
+      ) {
+        this.grantEventRewardCards(event);
+      }
+
+      completions.push({ event, cause, dealBreakerAlias, selectedResults });
     }
 
     this.eventCircles.forEach((event) => {
@@ -869,17 +967,14 @@ export class GameScene extends Phaser.Scene {
     this.turnManager.advanceTurn();
     this.eventCircles.forEach((event) => event.tickTurn());
 
-    const readyEvents = [
-      ...findEventsReadyToProcess(this.eventCircles),
-      ...findEventsDueForAutoComplete(this.eventCircles),
-    ];
-    const uniqueReady = [...new Set(readyEvents)];
-
-    for (const event of uniqueReady) {
-      if (event.eventData.completed) continue;
-      event.complete();
-      this.relayoutEventCards(event);
-      this.onEventComplete(event);
+    for (const item of completions) {
+      if (item.event.eventData.completed) continue;
+      item.event.complete(item.cause, item.dealBreakerAlias);
+      this.relayoutEventCards(item.event);
+      this.executeResultActions(
+        item.event,
+        item.selectedResults.flatMap((result) => result.actions)
+      );
     }
 
     this.ensureApathyHandForRequiredSlots();
@@ -888,14 +983,52 @@ export class GameScene extends Phaser.Scene {
   }
 
   private grantEventRewardCards(event: EventCircle): void {
-    const rewardCards = event.eventData.rewardCards ?? [];
-    if (rewardCards.length > 0) {
-      this.addCardsToHand(rewardCards);
+    const aliases = resolveEventOutputEmotions(event.eventData);
+    if (aliases.length > 0) {
+      this.addCardsToHand(aliases);
     }
   }
 
-  private onEventComplete(event: EventCircle): void {
-    const newEvents = this.eventManager.resolveTriggers(event.eventData);
-    this.spawnEvents(event, newEvents);
+  private executeResultActions(
+    parent: EventCircle,
+    actions: EventAction[]
+  ): void {
+    const immediateTemplateIds: number[] = [];
+    const emotionAliases: CardAlias[] = [];
+    for (const action of actions) {
+      if (action.type === 'createEmotion') {
+        const emotions = Array.isArray(action.emotions)
+          ? action.emotions
+          : [action.emotions];
+        emotionAliases.push(...emotions);
+        continue;
+      }
+
+      const templateId = Number(action.event);
+      if (Number.isNaN(templateId)) continue;
+
+      if (action.delay <= 0) {
+        immediateTemplateIds.push(templateId);
+      } else {
+        this.eventManager.enqueueChildEvent(
+          parent.eventData.instanceId,
+          templateId,
+          action.personality,
+          action.delay
+        );
+      }
+    }
+
+    if (emotionAliases.length > 0) {
+      this.addCardsToHand(emotionAliases);
+    }
+
+    if (immediateTemplateIds.length > 0) {
+      const newEvents = this.eventManager.spawnChildEvents(
+        parent.eventData,
+        immediateTemplateIds
+      );
+      this.spawnEvents(parent, newEvents);
+    }
   }
 }
