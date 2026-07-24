@@ -9,6 +9,7 @@ import {
   addPersonalityToSession,
   loadGameSession,
 } from '../systems/gameSession';
+import { getSeedById, resolveSeed } from '../data/eventTemplates';
 import { resolveRewardCards } from '../systems/grantRewardCards';
 import { resolveEventOutputEmotions } from '../systems/resolveEventOutputs';
 import {
@@ -79,7 +80,7 @@ export class GameScene extends Phaser.Scene {
   private eventCircles: EventCircle[] = [];
   private placedCardsByEvent = new Map<number, CardSprite[]>();
   private draggingCard: CardSprite | null = null;
-  private eventManager = new EventManager();
+  private eventManager!: EventManager;
   private turnManager = new TurnManager();
   private treeLayer!: Phaser.GameObjects.Container;
   private treeGraphics!: Phaser.GameObjects.Graphics;
@@ -95,9 +96,21 @@ export class GameScene extends Phaser.Scene {
   private musicEnabled = false;
   private personalityClouds: PersonalityCloud[] = [];
   private endGameOverlay: Phaser.GameObjects.Container | null = null;
+  private launchSeedId: string | null = null;
+  private launchSelectedPersonalities: PersonalityId[] = [];
 
   constructor() {
     super({ key: 'GameScene' });
+  }
+
+  init(data: {
+    seedId?: string;
+    selectedPersonalities?: PersonalityId[];
+  } = {}): void {
+    this.launchSeedId = data.seedId ?? null;
+    this.launchSelectedPersonalities = Array.isArray(data.selectedPersonalities)
+      ? data.selectedPersonalities
+      : [];
   }
 
   preload(): void {
@@ -109,7 +122,18 @@ export class GameScene extends Phaser.Scene {
     this.eventCircles = [];
     this.placedCardsByEvent = new Map();
     this.draggingCard = null;
-    this.eventManager = new EventManager();
+
+    const session = loadGameSession();
+    const selectedPersonalities =
+      this.launchSelectedPersonalities.length > 0
+        ? this.launchSelectedPersonalities
+        : session.selectedPersonalities;
+    const seedId = this.launchSeedId ?? session.seedId;
+    const seed =
+      (seedId ? getSeedById(seedId) : undefined) ??
+      resolveSeed(selectedPersonalities);
+
+    this.eventManager = new EventManager(seed);
     this.turnManager = new TurnManager();
     this.treeScrollY = 0;
     this.treeScrollX = 0;

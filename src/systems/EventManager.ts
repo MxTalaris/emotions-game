@@ -1,5 +1,5 @@
-import { getBaseEventTemplates, getEventTemplateById } from '../data/eventTemplates';
 import { EventPersonalityRef, GameEventDefinition, GameEventInstance } from '../types';
+import { EventSeedDefinition } from '../data/eventTemplates';
 import {
   createEventInstance,
   layoutBaseEvents,
@@ -15,18 +15,35 @@ export interface PendingEventSpawn {
 }
 
 export class EventManager {
+  private readonly seed: EventSeedDefinition;
   /** Template ids already spawned (a model is only introduced once). */
   private spawnedTemplateIds = new Set<number>();
   /** Board positions keyed by event instanceId. */
   private eventNodes = new Map<number, TreePosition>();
   private pendingSpawns: PendingEventSpawn[] = [];
 
+  constructor(seed: EventSeedDefinition) {
+    this.seed = seed;
+  }
+
+  get seedId(): string {
+    return this.seed.id;
+  }
+
+  private getTemplateById(id: number): GameEventDefinition | undefined {
+    return this.seed.events.find((template) => template.id === id);
+  }
+
+  private getBaseTemplates(): GameEventDefinition[] {
+    return this.seed.events.filter((template) => template.isBase);
+  }
+
   generateInitialEvents(): GameEventInstance[] {
-    const baseTemplates = getBaseEventTemplates();
+    const baseTemplates = this.getBaseTemplates();
 
     if (baseTemplates.length !== 2) {
       console.warn(
-        `EventManager: expected 2 base events, found ${baseTemplates.length}.`
+        `EventManager: expected 2 base events for seed "${this.seed.id}", found ${baseTemplates.length}.`
       );
     }
 
@@ -55,7 +72,7 @@ export class EventManager {
 
     const templatesToSpawn = templateIds
       .filter((id) => !this.spawnedTemplateIds.has(id))
-      .map((id) => getEventTemplateById(id))
+      .map((id) => this.getTemplateById(id))
       .filter((template): template is GameEventDefinition => template !== undefined);
 
     if (templatesToSpawn.length === 0) return [];

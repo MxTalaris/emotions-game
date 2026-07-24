@@ -10,7 +10,14 @@ const CLOUD_COLORS: Record<string, number> = {
 
 const DEFAULT_CLOUD_COLOR = 0xb39ddb;
 
+/** Local hit area, generous enough to cover the whole drawn cloud. */
+const HIT_WIDTH = 156;
+const HIT_HEIGHT = 88;
+const HIT_OFFSET_Y = -6;
+
 export class PersonalityCloud extends Phaser.GameObjects.Container {
+  private readonly baseScale: number;
+
   constructor(
     scene: Phaser.Scene,
     x: number,
@@ -19,6 +26,8 @@ export class PersonalityCloud extends Phaser.GameObjects.Container {
     finalScale = 1
   ) {
     super(scene, x, y);
+
+    this.baseScale = finalScale;
 
     const definition = getPersonalityById(personalityAlias);
     const label = definition?.name ?? personalityAlias;
@@ -53,6 +62,33 @@ export class PersonalityCloud extends Phaser.GameObjects.Container {
       scale: finalScale,
       duration: 450,
       ease: 'Back.easeOut',
+    });
+  }
+
+  setSelectable(onSelect: () => void): void {
+    this.setInteractive({
+      hitArea: new Phaser.Geom.Rectangle(
+        -HIT_WIDTH / 2,
+        HIT_OFFSET_Y - HIT_HEIGHT / 2,
+        HIT_WIDTH,
+        HIT_HEIGHT
+      ),
+      hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+      useHandCursor: true,
+    });
+
+    this.on('pointerover', () => this.tweenToScale(this.baseScale * 1.08));
+    this.on('pointerout', () => this.tweenToScale(this.baseScale));
+    this.on('pointerdown', onSelect);
+  }
+
+  private tweenToScale(scale: number): void {
+    this.scene.tweens.killTweensOf(this);
+    this.scene.tweens.add({
+      targets: this,
+      scale,
+      duration: 140,
+      ease: 'Sine.easeOut',
     });
   }
 }

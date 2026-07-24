@@ -1,15 +1,26 @@
 import { PersonalityId } from '../types';
+import { resolveSeed } from '../data/eventTemplates';
 
 const STORAGE_KEY = 'emotions-game-session';
 /** Personalities discovered across every run — survives clearGameSession(). */
 const COLLECTION_KEY = 'emotions-game-personalities';
 
 export interface GameSession {
+  /** Personalities generated during the current run. */
   personalities: PersonalityId[];
+  /** Up to 2 personalities selected on the start screen for this run's seed. */
+  selectedPersonalities: PersonalityId[];
+  /** Resolved seed id for the current run. */
+  seedId: string;
 }
 
 function emptySession(): GameSession {
-  return { personalities: [] };
+  const seed = resolveSeed([]);
+  return {
+    personalities: [],
+    selectedPersonalities: [],
+    seedId: seed.id,
+  };
 }
 
 export function loadGameSession(): GameSession {
@@ -21,8 +32,17 @@ export function loadGameSession(): GameSession {
     const personalities = Array.isArray(parsed.personalities)
       ? parsed.personalities.filter((id): id is PersonalityId => typeof id === 'string')
       : [];
+    const selectedPersonalities = Array.isArray(parsed.selectedPersonalities)
+      ? parsed.selectedPersonalities.filter(
+          (id): id is PersonalityId => typeof id === 'string'
+        )
+      : [];
+    const seedId =
+      typeof parsed.seedId === 'string' && parsed.seedId.length > 0
+        ? parsed.seedId
+        : resolveSeed(selectedPersonalities).id;
 
-    return { personalities };
+    return { personalities, selectedPersonalities, seedId };
   } catch {
     return emptySession();
   }
@@ -30,6 +50,20 @@ export function loadGameSession(): GameSession {
 
 export function saveGameSession(session: GameSession): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+}
+
+export function startGameSession(
+  selectedPersonalities: PersonalityId[]
+): GameSession {
+  const selected = [...new Set(selectedPersonalities)].slice(0, 2);
+  const seed = resolveSeed(selected);
+  const session: GameSession = {
+    personalities: [],
+    selectedPersonalities: selected,
+    seedId: seed.id,
+  };
+  saveGameSession(session);
+  return session;
 }
 
 export function addPersonalityToSession(personalityId: PersonalityId): GameSession {
