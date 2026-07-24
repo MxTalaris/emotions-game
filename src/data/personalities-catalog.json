@@ -1,0 +1,14 @@
+[
+  {
+    "id": "warm",
+    "name": "Warm"
+  },
+  {
+    "id": "guarded",
+    "name": "Guarded"
+  },
+  {
+    "id": "impulsive",
+    "name": "Impulsive"
+  }
+]
