@@ -33,7 +33,7 @@ module.exports = {
     static: {
       directory: path.join(__dirname, 'dist'),
     },
-    port: 8081,
+    port: 8080,
     hot: true,
     open: true,
     setupMiddlewares: (middlewares, devServer) => {
