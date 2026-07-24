@@ -6,7 +6,7 @@
       "events": [
         {
           "id": 1,
-          "label": "Conversa difícil",
+          "label": "Conversa difícil KEVIN",
           "energyAmount": 30,
           "energyAmountSecret": false,
           "cardsPerTurn": 1,
@@ -883,7 +883,7 @@
               ],
               "suitEnergies": [],
               "cardEmotions": [
-                "apatia"
+                "apathy-basic"
               ]
             }
           ],
@@ -899,7 +899,7 @@
               "actions": [
                 {
                   "type": "createEmotion",
-                  "emotions": "apatia"
+                  "emotions": "apathy-basic"
                 },
                 {
                   "type": "createEvent",
@@ -1051,7 +1051,7 @@
               },
               "exclusive": false,
               "priority": 0,
-              "outputEmotions": "apatia"
+              "outputEmotions": "apathy-basic"
             }
           ]
         }
