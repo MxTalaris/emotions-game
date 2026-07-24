@@ -1,6 +1,6 @@
 import { EventModifiers } from '../systems/resolveModifiedCardEnergy';
 import { CardAlias, CardSuit } from './Card';
-import { EventPersonalityRef } from './Personality';
+import { EventPersonalityRef, PersonalityId } from './Personality';
 
 export interface SuitQuantity {
   suitId: CardSuit;
@@ -67,6 +67,14 @@ export type EventAction =
   | {
       type: 'createEmotion';
       emotions: CardAlias | CardAlias[];
+    }
+  | {
+      type: 'generatePersonality';
+      /** Personality alias from personalities-catalog.json. */
+      personality: PersonalityId;
+    }
+  | {
+      type: 'endGame';
     };
 
 export interface EventResult {

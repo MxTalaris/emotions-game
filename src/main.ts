@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from './config/gameConfig';
 import { GameScene } from './scenes/GameScene';
+import { StartScene } from './scenes/StartScene';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -8,7 +9,7 @@ const config: Phaser.Types.Core.GameConfig = {
   height: GAME_HEIGHT,
   parent: document.body,
   backgroundColor: '#1a1a2e',
-  scene: [GameScene],
+  scene: [StartScene, GameScene],
   audio: {
     disableWebAudio: false,
   },

@@ -3,6 +3,7 @@ import { CARD_HEIGHT, CARD_WIDTH, EVENT_COLORS, EVENT_TREE } from '../config/gam
 import { getCardByAlias } from '../data/cards';
 import { resolveModifiedCardEnergy } from '../systems/resolveModifiedCardEnergy';
 import { CardAlias, EventCompletionCause, GameEventInstance } from '../types';
+import { drawFlower, drawSeed } from '../utils/gardenGraphics';
 
 const ENERGY_BAR_HEIGHT = 10;
 const ENERGY_BAR_PADDING_X = 8;
@@ -10,7 +11,7 @@ const ENERGY_BAR_PADDING_TOP = 6;
 
 export class EventCircle extends Phaser.GameObjects.Container {
   readonly eventData: GameEventInstance;
-  private rect: Phaser.GameObjects.Rectangle;
+  private bodyGfx: Phaser.GameObjects.Graphics;
   private label: Phaser.GameObjects.Text;
   private turnsText: Phaser.GameObjects.Text | null = null;
   private energyBarBg: Phaser.GameObjects.Rectangle;
@@ -18,19 +19,21 @@ export class EventCircle extends Phaser.GameObjects.Container {
   private energySecretText: Phaser.GameObjects.Text | null = null;
   private slotDots: Phaser.GameObjects.Arc[] = [];
   private slotRequiredMarkers: Phaser.GameObjects.Text[] = [];
+  private bloomProgress = 0;
+  private blooming = false;
 
   constructor(scene: Phaser.Scene, eventData: GameEventInstance) {
     super(scene, eventData.x, eventData.y);
 
     this.eventData = eventData;
 
-    this.rect = scene.add.rectangle(0, 0, eventData.width, eventData.height);
-    this.rect.setStrokeStyle(3, EVENT_COLORS.stroke);
+    this.bodyGfx = scene.add.graphics();
 
     this.label = scene.add.text(0, -eventData.height / 2 - 16, eventData.label, {
       fontSize: '13px',
-      color: '#ffffff',
+      color: '#3d3428',
       align: 'center',
+      fontStyle: 'bold',
     });
     this.label.setOrigin(0.5);
 
@@ -53,7 +56,7 @@ export class EventCircle extends Phaser.GameObjects.Container {
     );
     this.energyBarFill.setOrigin(0, 0.5);
 
-    this.add([this.rect, this.label, this.energyBarBg, this.energyBarFill]);
+    this.add([this.bodyGfx, this.label, this.energyBarBg, this.energyBarFill]);
 
     if (eventData.energyAmountSecret) {
       this.energySecretText = scene.add.text(0, barY, '?', {
@@ -72,7 +75,7 @@ export class EventCircle extends Phaser.GameObjects.Container {
         '',
         {
           fontSize: '11px',
-          color: '#ffe082',
+          color: '#6b4f2e',
           fontStyle: 'bold',
         }
       );
@@ -90,7 +93,28 @@ export class EventCircle extends Phaser.GameObjects.Container {
     scene.add.existing(this);
   }
 
+  /** Fade/scale-in when a branch finishes growing to this seed. */
+  playSeedReveal(): void {
+    this.setScale(0.2);
+    this.setAlpha(0);
+    this.scene.tweens.add({
+      targets: this,
+      scaleX: 1,
+      scaleY: 1,
+      alpha: 1,
+      duration: EVENT_TREE.seedRevealMs,
+      ease: 'Back.easeOut',
+    });
+  }
+
   containsPoint(x: number, y: number): boolean {
+    if (this.eventData.completed) {
+      const radius = this.getFlowerHitRadius();
+      const dx = x - this.eventData.x;
+      const dy = y - this.eventData.y;
+      return dx * dx + dy * dy <= radius * radius;
+    }
+
     const halfH = this.eventData.height / 2;
     const top = this.eventData.y - halfH;
     const bottom = this.getCardSlotsBottom();
@@ -145,7 +169,6 @@ export class EventCircle extends Phaser.GameObjects.Container {
 
   canAcceptCard(): boolean {
     if (this.eventData.completed) return false;
-    if (this.eventData.progress >= this.eventData.energyAmount) return false;
     return this.eventData.cardsPlacedThisTurn < this.eventData.cardsPerTurn;
   }
 
@@ -227,10 +250,12 @@ export class EventCircle extends Phaser.GameObjects.Container {
     if (dealBreakerAlias) {
       this.eventData.matchedDealBreakerAlias = dealBreakerAlias;
     }
-    this.updateVisualState();
-    this.refreshSlotDots();
-    this.refreshTurnsText();
-    this.updateEnergyBar();
+    this.applyCompletedPresentation();
+    this.playBloom();
+  }
+
+  getFlowerHitRadius(): number {
+    return Math.max(this.eventData.width, this.eventData.height) * EVENT_TREE.flowerRadiusScale;
   }
 
   /** True when this event still needs a required card allocation this turn. */
@@ -240,6 +265,42 @@ export class EventCircle extends Phaser.GameObjects.Container {
       this.eventData.cardsRequired &&
       this.eventData.cardsPlacedThisTurn < this.eventData.cardsPerTurn
     );
+  }
+
+  private applyCompletedPresentation(): void {
+    this.energyBarBg.setVisible(false);
+    this.energyBarFill.setVisible(false);
+    this.energySecretText?.setVisible(false);
+    this.turnsText?.setVisible(false);
+    this.slotDots.forEach((dot) => dot.setVisible(false));
+    this.slotRequiredMarkers.forEach((marker) => marker.setVisible(false));
+
+    const flowerRadius = this.getFlowerHitRadius();
+    this.label.setPosition(0, -flowerRadius - 14);
+    this.label.setColor('#3d3428');
+  }
+
+  private playBloom(): void {
+    if (this.blooming) return;
+    this.blooming = true;
+    this.bloomProgress = 0;
+
+    const bloom = { progress: 0 };
+    this.scene.tweens.add({
+      targets: bloom,
+      progress: 1,
+      duration: EVENT_TREE.flowerBloomMs,
+      ease: 'Back.easeOut',
+      onUpdate: () => {
+        this.bloomProgress = bloom.progress;
+        this.redrawBody();
+      },
+      onComplete: () => {
+        this.blooming = false;
+        this.bloomProgress = 1;
+        this.redrawBody();
+      },
+    });
   }
 
   private createSlotDots(scene: Phaser.Scene): void {
@@ -362,11 +423,18 @@ export class EventCircle extends Phaser.GameObjects.Container {
   }
 
   private updateEnergyBar(): void {
+    if (this.eventData.completed) {
+      this.energyBarBg.setVisible(false);
+      this.energyBarFill.setVisible(false);
+      this.energySecretText?.setVisible(false);
+      return;
+    }
+
     const barWidth = this.eventData.width - ENERGY_BAR_PADDING_X * 2;
 
     this.energyBarBg.setVisible(true);
 
-    if (this.eventData.energyAmountSecret && !this.eventData.completed) {
+    if (this.eventData.energyAmountSecret) {
       this.energyBarBg.setFillStyle(EVENT_COLORS.energyBarSecret);
       this.energyBarFill.width = 0;
       this.energyBarFill.setVisible(false);
@@ -386,7 +454,7 @@ export class EventCircle extends Phaser.GameObjects.Container {
     this.energyBarFill.width = barWidth * ratio;
     this.energyBarFill.setVisible(true);
 
-    if (this.isReadyToProcess() || this.eventData.completed) {
+    if (this.isReadyToProcess()) {
       this.energyBarFill.setFillStyle(EVENT_COLORS.ready);
     } else {
       this.energyBarFill.setFillStyle(EVENT_COLORS.energyBarFill);
@@ -394,23 +462,39 @@ export class EventCircle extends Phaser.GameObjects.Container {
   }
 
   private updateVisualState(): void {
-    if (this.eventData.completed) {
-      this.rect.setFillStyle(EVENT_COLORS.completed, 1);
-      this.rect.setStrokeStyle(3, EVENT_COLORS.completedStroke);
+    this.redrawBody();
+  }
+
+  private redrawBody(): void {
+    const { width, height, completed } = this.eventData;
+    this.bodyGfx.clear();
+
+    if (completed || this.blooming) {
+      const seedAlpha = Math.max(0, 1 - this.bloomProgress * 1.4);
+      if (seedAlpha > 0.02) {
+        drawSeed(this.bodyGfx, width, height, {
+          fill: EVENT_COLORS.fill,
+          fillAlpha: seedAlpha * 0.85,
+          stroke: EVENT_COLORS.stroke,
+        });
+      }
+
+      const flowerRadius =
+        Math.max(width, height) * EVENT_TREE.flowerRadiusScale;
+      const petalScale = Phaser.Math.Clamp(this.bloomProgress, 0.05, 1.12);
+      drawFlower(this.bodyGfx, flowerRadius, undefined, petalScale);
       return;
     }
 
     const showReady =
       this.isReadyToProcess() && !this.eventData.energyAmountSecret;
     const stroke = showReady ? EVENT_COLORS.ready : EVENT_COLORS.stroke;
+    const fillAlpha = this.isTurnLimitReached() ? 1 : 0.35;
 
-    if (this.isTurnLimitReached()) {
-      this.rect.setFillStyle(EVENT_COLORS.fill, 1);
-      this.rect.setStrokeStyle(3, stroke);
-      return;
-    }
-
-    this.rect.setFillStyle(EVENT_COLORS.fill, 0);
-    this.rect.setStrokeStyle(3, stroke);
+    drawSeed(this.bodyGfx, width, height, {
+      fill: EVENT_COLORS.fill,
+      fillAlpha,
+      stroke,
+    });
   }
 }
