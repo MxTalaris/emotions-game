@@ -7,6 +7,7 @@ interface EmotionCatalogEntry {
   energy: number;
   duration: number;
   fadedEmotion: string[] | null;
+  image?: string;
 }
 
 interface EmotionSuitGroup {
@@ -39,7 +40,7 @@ function loadCatalog(raw: EmotionsCatalog): {
       const definition: CardDefinition = {
         alias: entry.id,
         name: entry.name,
-        image: '',
+        image: entry.image ?? '',
         suit,
         energyAmount: entry.energy,
         duration: entry.duration,

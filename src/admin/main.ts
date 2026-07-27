@@ -1,4 +1,5 @@
 import styles from './styles.css';
+import '@xyflow/react/dist/style.css';
 import { loadData } from './api';
 import { clear, el } from './dom';
 import { renderCardsEditor } from './editors/CardsEditor';

@@ -23,3 +23,30 @@ export async function saveData(name: DataResource, data: unknown): Promise<void>
     throw new Error(body.error ?? `Failed to save ${name} (${res.status})`);
   }
 }
+
+export async function uploadCardImage(
+  cardId: string,
+  file: File
+): Promise<string> {
+  const contentBase64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.onerror = () => reject(reader.error ?? new Error('Read failed'));
+    reader.readAsDataURL(file);
+  });
+
+  const res = await fetch('/api/upload/card', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      cardId,
+      filename: file.name,
+      contentBase64,
+    }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(body.error ?? `Upload failed (${res.status})`);
+  }
+  return String(body.path);
+}

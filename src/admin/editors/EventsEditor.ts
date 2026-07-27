@@ -6,6 +6,7 @@ import {
   el,
   field,
   numberInput,
+  openModal,
   selectInput,
   textInput,
 } from '../dom';
@@ -23,6 +24,11 @@ import {
   PersonalityEntry,
 } from '../types';
 import { collectPersonalityIds, validateEventSeeds } from '../validate';
+import {
+  disposeEventsTreeFlows,
+  mountEventsTreeFlow,
+  type EventsTreeFlowProps,
+} from './EventsTreeFlow';
 
 export interface EventsEditorContext {
   getSeeds: () => EventSeedsFile;
@@ -33,12 +39,36 @@ export interface EventsEditorContext {
   onChanged: () => void;
 }
 
+const NEW_EVENT_OPTION = '__new__';
+const BASIC_FILTER = 'basic';
+
+type BrowseMode = 'list' | 'tree';
 type View =
-  | { kind: 'seeds' }
-  | { kind: 'seed'; seedIndex: number }
+  | { kind: 'browse' }
   | { kind: 'event'; seedIndex: number; eventIndex: number };
 
-let view: View = { kind: 'seeds' };
+let view: View = { kind: 'browse' };
+let browseMode: BrowseMode = 'list';
+/** Selected personality filter ids. Empty = show all. Use "basic" for empty-personality seeds. */
+let personalityFilter: string[] = [];
+
+function normalizePersonalities(personalities: string[]): string[] {
+  return [...new Set(personalities)].sort();
+}
+
+function personalitiesKey(personalities: string[]): string {
+  return normalizePersonalities(personalities).join('|');
+}
+
+function buildSeedId(personalities: string[]): string {
+  const normalized = normalizePersonalities(personalities);
+  return normalized.length === 0 ? 'basic' : normalized.join('-');
+}
+
+function nextEventId(seed: EventSeedDefinition): number {
+  const max = seed.events.reduce((m, e) => Math.max(m, e.id), 0);
+  return max + 1;
+}
 
 function cloneEvent(base?: Partial<GameEventDefinition>): GameEventDefinition {
   return {
@@ -58,6 +88,211 @@ function cloneEvent(base?: Partial<GameEventDefinition>): GameEventDefinition {
     results: base?.results ? structuredClone(base.results) : [],
     outputs: base?.outputs ? structuredClone(base.outputs) : [],
   };
+}
+
+function createBlankEvent(label: string, id: number): GameEventDefinition {
+  return cloneEvent({ id, label, isBase: undefined });
+}
+
+function seedMatchesFilter(
+  seed: EventSeedDefinition,
+  filter: string[]
+): boolean {
+  if (filter.length === 0) return true;
+  const wantsBasic = filter.includes(BASIC_FILTER);
+  const personalityIds = filter.filter((id) => id !== BASIC_FILTER);
+  if (wantsBasic && personalityIds.length === 0) {
+    return seed.personalities.length === 0;
+  }
+  if (wantsBasic && personalityIds.length > 0) {
+    return false;
+  }
+  return personalityIds.every((id) => seed.personalities.includes(id));
+}
+
+interface FlatEventRow {
+  seedIndex: number;
+  eventIndex: number;
+  seed: EventSeedDefinition;
+  event: GameEventDefinition;
+}
+
+function collectFlatEvents(
+  file: EventSeedsFile,
+  filter: string[]
+): FlatEventRow[] {
+  const rows: FlatEventRow[] = [];
+  file.seeds.forEach((seed, seedIndex) => {
+    if (!seedMatchesFilter(seed, filter)) return;
+    seed.events.forEach((event, eventIndex) => {
+      rows.push({ seedIndex, eventIndex, seed, event });
+    });
+  });
+  return rows;
+}
+
+function stripCreateEventRefs(
+  events: GameEventDefinition[],
+  deletedId: string
+): GameEventDefinition[] {
+  return events.map((event) => {
+    if (!event.results?.length) return event;
+    const results = event.results.map((result) => ({
+      ...result,
+      actions: result.actions.filter(
+        (action) =>
+          !(action.type === 'createEvent' && action.event === deletedId)
+      ),
+    }));
+    return { ...event, results };
+  });
+}
+
+function deleteEvent(
+  ctx: EventsEditorContext,
+  seedIndex: number,
+  eventIndex: number
+): void {
+  const file = ctx.getSeeds();
+  const seed = file.seeds[seedIndex];
+  if (!seed) return;
+  const target = seed.events[eventIndex];
+  if (!target) return;
+  const deletedId = String(target.id);
+  const remaining = seed.events.filter((_, i) => i !== eventIndex);
+  const cleaned = stripCreateEventRefs(remaining, deletedId);
+  updateSeed(ctx, seedIndex, { events: cleaned });
+}
+
+function findSeedByPersonalities(
+  file: EventSeedsFile,
+  personalities: string[]
+): number {
+  const key = personalitiesKey(personalities);
+  return file.seeds.findIndex(
+    (seed) => personalitiesKey(seed.personalities) === key
+  );
+}
+
+/** Move event to seed matching personalities; create seed if needed. Returns new indices. */
+function moveEventToPersonalities(
+  ctx: EventsEditorContext,
+  seedIndex: number,
+  eventIndex: number,
+  personalities: string[]
+): { seedIndex: number; eventIndex: number } {
+  const normalized = normalizePersonalities(personalities).slice(0, 2);
+  const file = ctx.getSeeds();
+  const source = file.seeds[seedIndex];
+  if (!source) return { seedIndex, eventIndex };
+
+  if (personalitiesKey(source.personalities) === personalitiesKey(normalized)) {
+    return { seedIndex, eventIndex };
+  }
+
+  const event = structuredClone(source.events[eventIndex]);
+  if (!event) return { seedIndex, eventIndex };
+
+  let seeds = file.seeds.map((seed, si) =>
+    si === seedIndex
+      ? { ...seed, events: seed.events.filter((_, i) => i !== eventIndex) }
+      : seed
+  );
+
+  let targetIndex = findSeedByPersonalities({ seeds }, normalized);
+  if (targetIndex < 0) {
+    seeds = [
+      ...seeds,
+      {
+        id: buildSeedId(normalized),
+        personalities: normalized,
+        events: [],
+      },
+    ];
+    targetIndex = seeds.length - 1;
+  }
+
+  const target = seeds[targetIndex];
+  const existingIds = new Set(target.events.map((e) => e.id));
+  if (existingIds.has(event.id)) {
+    event.id = nextEventId(target);
+  }
+  seeds = seeds.map((seed, si) =>
+    si === targetIndex
+      ? { ...seed, events: [...seed.events, event] }
+      : seed
+  );
+
+  ctx.setSeeds({ seeds });
+  return {
+    seedIndex: targetIndex,
+    eventIndex: seeds[targetIndex].events.length - 1,
+  };
+}
+
+function promptNewEventLabel(): string | null {
+  const label = window.prompt('New event name');
+  if (label == null) return null;
+  const trimmed = label.trim();
+  return trimmed || null;
+}
+
+function addEventToSeed(
+  ctx: EventsEditorContext,
+  seedIndex: number,
+  label: string
+): { seedIndex: number; eventIndex: number; id: string } {
+  const file = ctx.getSeeds();
+  const seed = file.seeds[seedIndex];
+  if (!seed) {
+    throw new Error('Seed not found');
+  }
+  const id = nextEventId(seed);
+  const event = createBlankEvent(label, id);
+  updateSeed(ctx, seedIndex, { events: [...seed.events, event] });
+  return {
+    seedIndex,
+    eventIndex: seed.events.length,
+    id: String(id),
+  };
+}
+
+function ensureDefaultSeed(ctx: EventsEditorContext): number {
+  const file = ctx.getSeeds();
+  if (file.seeds.length > 0) {
+    const basic = findSeedByPersonalities(file, []);
+    return basic >= 0 ? basic : 0;
+  }
+  ctx.setSeeds({
+    seeds: [{ id: 'basic', personalities: [], events: [] }],
+  });
+  return 0;
+}
+
+async function saveEvents(
+  ctx: EventsEditorContext,
+  errorsBox: HTMLElement
+): Promise<void> {
+  const data = ctx.getSeeds();
+  const cardAliases = new Set(ctx.getCardAliases());
+  const personalityIds = collectPersonalityIds(ctx.getPersonalities());
+  const errors = validateEventSeeds(data, cardAliases, personalityIds);
+  clear(errorsBox);
+  if (errors.length) {
+    errorsBox.className = 'errors';
+    errorsBox.append(
+      el('strong', { text: 'Fix before saving:' }),
+      el('ul', {}, ...errors.map((e) => el('li', { text: e })))
+    );
+    ctx.setStatus('Validation failed', 'err');
+    return;
+  }
+  try {
+    await saveData('event-templates', data);
+    ctx.setStatus('Events saved', 'ok');
+  } catch (err) {
+    ctx.setStatus(err instanceof Error ? err.message : String(err), 'err');
+  }
 }
 
 function updateSeed(
@@ -88,6 +323,23 @@ function updateEvent(
     return { ...seed, events };
   });
   ctx.setSeeds({ seeds });
+}
+
+function eventSelectOptions(
+  seed: EventSeedDefinition,
+  includeNew = false
+): { value: string; label: string }[] {
+  const opts = seed.events
+    .slice()
+    .sort((a, b) => a.id - b.id)
+    .map((e) => ({
+      value: String(e.id),
+      label: `${e.id} - ${e.label}`,
+    }));
+  if (includeNew) {
+    opts.push({ value: NEW_EVENT_OPTION, label: '+ Add new event' });
+  }
+  return opts;
 }
 
 function suitOptions(): { value: string; label: string }[] {
@@ -470,10 +722,16 @@ function renderActionEditor(
   onRemove: () => void,
   cardAliases: string[],
   personalityIds: string[],
-  eventIds: string[],
+  seed: EventSeedDefinition,
+  seedIndex: number,
+  ctx: EventsEditorContext,
   rerender: () => void
 ): HTMLElement {
   const block = el('div', { className: 'nested' });
+  const eventOpts = eventSelectOptions(seed, true);
+  const defaultEventId =
+    seed.events[0] != null ? String(seed.events[0].id) : '1';
+
   const typeSelect = selectInput(
     action.type,
     [
@@ -487,7 +745,7 @@ function renderActionEditor(
         onChange({
           type: 'createEvent',
           personality: 'all',
-          event: eventIds[0] ?? '1',
+          event: defaultEventId,
           delay: 0,
         });
       } else if (v === 'createEmotion') {
@@ -535,11 +793,20 @@ function renderActionEditor(
         ),
         field(
           'Event id',
-          selectInput(
-            action.event,
-            eventIds.map((id) => ({ value: id, label: id })),
-            (v) => onChange({ ...action, event: v })
-          )
+          selectInput(action.event, eventOpts, (v) => {
+            if (v === NEW_EVENT_OPTION) {
+              const label = promptNewEventLabel();
+              if (!label) {
+                rerender();
+                return;
+              }
+              const created = addEventToSeed(ctx, seedIndex, label);
+              onChange({ ...action, event: created.id });
+              rerender();
+              return;
+            }
+            onChange({ ...action, event: v });
+          })
         ),
         field(
           'Delay',
@@ -584,11 +851,13 @@ function renderResultsSection(
   ctx: EventsEditorContext,
   cardAliases: string[],
   personalityIds: string[],
-  eventIds: string[],
+  seed: EventSeedDefinition,
   dealBreakerAliases: string[],
   rerender: () => void
 ): HTMLElement {
   const section = el('div', { className: 'nested' });
+  const defaultEventId =
+    seed.events[0] != null ? String(seed.events[0].id) : '1';
   section.append(
     el(
       'div',
@@ -738,7 +1007,9 @@ function renderResultsSection(
           },
           cardAliases,
           personalityIds,
-          eventIds,
+          seed,
+          seedIndex,
+          ctx,
           rerender
         )
       );
@@ -753,7 +1024,7 @@ function renderResultsSection(
               {
                 type: 'createEvent',
                 personality: 'all',
-                event: eventIds[0] ?? '1',
+                event: defaultEventId,
                 delay: 0,
               },
             ],
@@ -933,24 +1204,11 @@ function renderBreadcrumb(
 ): HTMLElement {
   const crumbs = el('div', { className: 'breadcrumb' });
   crumbs.append(
-    button('Seeds', () => {
-      view = { kind: 'seeds' };
+    button('Events', () => {
+      view = { kind: 'browse' };
       rerender();
     })
   );
-
-  if (view.kind === 'seed' || view.kind === 'event') {
-    const seed = ctx.getSeeds().seeds[view.seedIndex];
-    crumbs.append(
-      el('span', { className: 'sep', text: '/' }),
-      button(seed?.id ?? 'seed', () => {
-        if (view.kind === 'seed' || view.kind === 'event') {
-          view = { kind: 'seed', seedIndex: view.seedIndex };
-          rerender();
-        }
-      })
-    );
-  }
 
   if (view.kind === 'event') {
     const event =
@@ -966,195 +1224,292 @@ function renderBreadcrumb(
   return crumbs;
 }
 
-function renderSeedsList(
-  root: HTMLElement,
+function renderFilterBar(
   ctx: EventsEditorContext,
-  errorsBox: HTMLElement,
   rerender: () => void
-): void {
-  const file = ctx.getSeeds();
-  const toolbar = el(
-    'div',
-    { className: 'toolbar' },
-    button(
-      'Add seed',
-      () => {
-        const seeds = [
-          ...file.seeds,
-          { id: `seed-${Date.now()}`, personalities: [], events: [] },
-        ];
-        ctx.setSeeds({ seeds });
-        rerender();
-      },
-      'btn'
-    ),
-    button(
-      'Save events',
-      async () => {
-        const data = ctx.getSeeds();
-        const cardAliases = new Set(ctx.getCardAliases());
-        const personalityIds = collectPersonalityIds(ctx.getPersonalities());
-        const errors = validateEventSeeds(data, cardAliases, personalityIds);
-        clear(errorsBox);
-        if (errors.length) {
-          errorsBox.className = 'errors';
-          errorsBox.append(
-            el('strong', { text: 'Fix before saving:' }),
-            el(
-              'ul',
-              {},
-              ...errors.map((e) => el('li', { text: e }))
-            )
-          );
-          ctx.setStatus('Validation failed', 'err');
-          return;
-        }
-        try {
-          await saveData('event-templates', data);
-          ctx.setStatus('Events saved', 'ok');
-        } catch (err) {
-          ctx.setStatus(err instanceof Error ? err.message : String(err), 'err');
-        }
-      },
-      'btn primary'
-    )
-  );
+): HTMLElement {
+  const personalities = ctx.getPersonalities();
+  const wrap = el('div', { className: 'filter-bar' });
+  wrap.append(el('span', { className: 'filter-label', text: 'Filter:' }));
 
-  const list = el('div', { className: 'list' });
-  file.seeds.forEach((seed, index) => {
-    list.append(
-      el(
-        'div',
-        { className: 'list-row' },
-        el('div', {
-          className: 'label',
-          text: seed.id,
-        }),
-        el('div', {
-          className: 'meta',
-          text: `${seed.events.length} events · personalities: [${seed.personalities.join(', ')}]`,
-        }),
-        button(
-          'Open',
-          () => {
-            view = { kind: 'seed', seedIndex: index };
-            rerender();
-          },
-          'btn small primary'
-        ),
-        button(
-          'Remove',
-          () => {
-            if (!confirm(`Remove seed "${seed.id}"?`)) return;
-            ctx.setSeeds({
-              seeds: file.seeds.filter((_, i) => i !== index),
-            });
-            rerender();
-          },
-          'btn danger small'
-        )
+  const options = [
+    { id: BASIC_FILTER, label: 'basic' },
+    ...personalities.map((p) => ({ id: p.id, label: p.name || p.id })),
+  ];
+
+  for (const opt of options) {
+    const active = personalityFilter.includes(opt.id);
+    wrap.append(
+      button(
+        opt.label,
+        () => {
+          if (active) {
+            personalityFilter = personalityFilter.filter((id) => id !== opt.id);
+          } else {
+            personalityFilter = [...personalityFilter, opt.id];
+          }
+          rerender();
+        },
+        active ? 'btn small primary' : 'btn small'
       )
     );
-  });
+  }
 
-  root.append(
-    el('div', { className: 'panel' }, el('h2', { text: 'Event seeds' }), toolbar, errorsBox, list)
+  if (personalityFilter.length) {
+    wrap.append(
+      button(
+        'Clear',
+        () => {
+          personalityFilter = [];
+          rerender();
+        },
+        'btn small'
+      )
+    );
+  }
+
+  return wrap;
+}
+
+function renderModeToggle(rerender: () => void): HTMLElement {
+  return el(
+    'div',
+    { className: 'mode-toggle' },
+    button(
+      'List',
+      () => {
+        browseMode = 'list';
+        rerender();
+      },
+      browseMode === 'list' ? 'btn small primary' : 'btn small'
+    ),
+    button(
+      'Tree',
+      () => {
+        browseMode = 'tree';
+        rerender();
+      },
+      browseMode === 'tree' ? 'btn small primary' : 'btn small'
+    )
   );
 }
 
-function renderSeedDetail(
-  root: HTMLElement,
+function confirmDeleteEvent(label: string): boolean {
+  return confirm(`Really delete event "${label}"? This cannot be undone until you save.`);
+}
+
+function addCreateEventLink(
   ctx: EventsEditorContext,
   seedIndex: number,
-  errorsBox: HTMLElement,
-  rerender: () => void
+  parentEventId: number,
+  childEventId: number
 ): void {
   const seed = ctx.getSeeds().seeds[seedIndex];
-  if (!seed) {
-    view = { kind: 'seeds' };
-    rerender();
-    return;
+  if (!seed) return;
+  const eventIndex = seed.events.findIndex((e) => e.id === parentEventId);
+  if (eventIndex < 0) return;
+  const event = seed.events[eventIndex];
+  const results = [...(event.results ?? [])];
+  const already = results.some((result) =>
+    result.actions.some(
+      (action) =>
+        action.type === 'createEvent' && action.event === String(childEventId)
+    )
+  );
+  if (already) return;
+
+  if (results.length === 0) {
+    results.push({
+      type: { type: 'default' },
+      outputOverride: false,
+      exclusive: false,
+      priority: 0,
+      actions: [
+        {
+          type: 'createEvent',
+          personality: 'all',
+          event: String(childEventId),
+          delay: 0,
+        },
+      ],
+    });
+  } else {
+    const first = results[0];
+    results[0] = {
+      ...first,
+      actions: [
+        ...first.actions,
+        {
+          type: 'createEvent',
+          personality: 'all',
+          event: String(childEventId),
+          delay: 0,
+        },
+      ],
+    };
   }
+  updateEvent(ctx, seedIndex, eventIndex, { results });
+}
 
-  const personalityIds = ctx.getPersonalities().map((p) => p.id);
+function removeCreateEventLink(
+  ctx: EventsEditorContext,
+  seedIndex: number,
+  parentEventId: number,
+  childEventId: number
+): void {
+  const seed = ctx.getSeeds().seeds[seedIndex];
+  if (!seed) return;
+  const eventIndex = seed.events.findIndex((e) => e.id === parentEventId);
+  if (eventIndex < 0) return;
+  const event = seed.events[eventIndex];
+  const child = String(childEventId);
+  const results = (event.results ?? []).map((result) => ({
+    ...result,
+    actions: result.actions.filter(
+      (action) =>
+        !(action.type === 'createEvent' && action.event === child)
+    ),
+  }));
+  updateEvent(ctx, seedIndex, eventIndex, { results });
+}
 
-  const toolbar = el(
-    'div',
-    { className: 'toolbar' },
+function openEventModal(
+  ctx: EventsEditorContext,
+  seedIndex: number,
+  eventIndex: number,
+  parentRerender: () => void
+): void {
+  const body = el('div');
+  const errorsBox = el('div');
+  const loc = { seedIndex, eventIndex };
+  let closeModal: () => void = () => undefined;
+
+  const modal = openModal(`Edit event`, body, [
     button(
-      'Add event',
+      'Close',
       () => {
-        const events = [...seed.events, cloneEvent()];
-        updateSeed(ctx, seedIndex, { events });
-        rerender();
+        closeModal();
+        parentRerender();
       },
-      'btn primary'
+      'btn'
     ),
-    button(
-      'Save events',
-      async () => {
-        const data = ctx.getSeeds();
-        const cardAliases = new Set(ctx.getCardAliases());
-        const pids = collectPersonalityIds(ctx.getPersonalities());
-        const errors = validateEventSeeds(data, cardAliases, pids);
-        clear(errorsBox);
-        if (errors.length) {
-          errorsBox.className = 'errors';
-          errorsBox.append(
-            el('strong', { text: 'Fix before saving:' }),
-            el(
-              'ul',
-              {},
-              ...errors.map((e) => el('li', { text: e }))
-            )
-          );
-          ctx.setStatus('Validation failed', 'err');
-          return;
-        }
-        try {
-          await saveData('event-templates', data);
-          ctx.setStatus('Events saved', 'ok');
-        } catch (err) {
-          ctx.setStatus(err instanceof Error ? err.message : String(err), 'err');
-        }
-      },
-      'btn primary'
-    )
-  );
+  ]);
+  closeModal = modal.close;
 
-  const form = el(
-    'div',
-    { className: 'form-grid' },
-    field(
-      'Seed ID',
-      textInput(seed.id, (v) => updateSeed(ctx, seedIndex, { id: v }))
-    ),
-    field(
-      'Personalities',
-      renderChipList(seed.personalities, personalityIds, (next) => {
-        updateSeed(ctx, seedIndex, { personalities: next });
-        rerender();
-      }),
-      true
-    )
-  );
+  const localRerender = () => {
+    clear(body);
+    const form = renderEventForm(ctx, loc, errorsBox, () => {
+      localRerender();
+      parentRerender();
+    });
+    body.append(form);
+  };
+  localRerender();
+}
 
-  const list = el('div', { className: 'list' });
-  if (seed.events.length === 0) {
-    list.append(el('div', { className: 'empty', text: 'No events in this seed.' }));
+function renderTreeView(
+  ctx: EventsEditorContext,
+  rerender: () => void
+): HTMLElement {
+  disposeEventsTreeFlows();
+  const file = ctx.getSeeds();
+  const wrap = el('div', { className: 'tree-view' });
+  let any = false;
+
+  file.seeds.forEach((seed, seedIndex) => {
+    if (!seedMatchesFilter(seed, personalityFilter)) return;
+    any = true;
+
+    const panel = el('div', { className: 'tree-seed-panel' });
+    panel.append(
+      el('h3', {
+        text: `${seed.id} [${seed.personalities.join(', ') || 'basic'}]`,
+      })
+    );
+
+    const canvas = el('div', { className: 'tree-flow-host' });
+    panel.append(canvas);
+    wrap.append(panel);
+
+    // Mount after the host is in the document tree (caller appends wrap next).
+    // Mount after layout so React Flow gets a non-zero container size.
+    requestAnimationFrame(() => {
+      const props: EventsTreeFlowProps = {
+        seed,
+        seedIndex,
+        onEditEvent: (si: number, ei: number) =>
+          openEventModal(ctx, si, ei, rerender),
+        onDeleteEvent: (si: number, ei: number) => {
+          const ev = ctx.getSeeds().seeds[si]?.events[ei];
+          if (!ev) return;
+          if (!confirmDeleteEvent(ev.label)) {
+            rerender();
+            return;
+          }
+          deleteEvent(ctx, si, ei);
+          rerender();
+        },
+        onAddEvent: (si: number) => {
+          const label = promptNewEventLabel();
+          if (!label) return;
+          const created = addEventToSeed(ctx, si, label);
+          openEventModal(ctx, created.seedIndex, created.eventIndex, rerender);
+          rerender();
+        },
+        onConnectEvents: (si: number, parentId: number, childId: number) => {
+          addCreateEventLink(ctx, si, parentId, childId);
+        },
+        onDisconnectEvents: (
+          si: number,
+          parentId: number,
+          childId: number
+        ) => {
+          removeCreateEventLink(ctx, si, parentId, childId);
+        },
+      };
+      mountEventsTreeFlow(canvas, props);
+    });
+  });
+
+  if (!any) {
+    wrap.append(
+      el('div', {
+        className: 'empty',
+        text: 'No seeds match the current filter.',
+      })
+    );
   }
-  seed.events.forEach((event, eventIndex) => {
+
+  return wrap;
+}
+
+function renderFlatList(
+  ctx: EventsEditorContext,
+  rerender: () => void
+): HTMLElement {
+  const rows = collectFlatEvents(ctx.getSeeds(), personalityFilter);
+  const list = el('div', { className: 'list' });
+
+  if (rows.length === 0) {
+    list.append(
+      el('div', { className: 'empty', text: 'No events match the filter.' })
+    );
+    return list;
+  }
+
+  for (const row of rows) {
+    const { seed, event, seedIndex, eventIndex } = row;
     list.append(
       el(
         'div',
         { className: 'list-row' },
         el('div', {
           className: 'label',
-          text: `${event.label}`,
+          text: `${event.isBase ? '★ ' : ''}${event.label}`,
         }),
         el('div', {
           className: 'meta',
-          text: `id ${event.id} · energy ${event.energyAmount}`,
+          text: `id ${event.id} · seed ${seed.id} · [${seed.personalities.join(', ') || 'basic'}] · energy ${event.energyAmount}`,
         }),
         button(
           'Edit',
@@ -1169,8 +1524,9 @@ function renderSeedDetail(
           () => {
             const copy = cloneEvent({
               ...event,
-              id: event.id + 1000,
+              id: nextEventId(seed),
               label: `${event.label} (copy)`,
+              isBase: undefined,
             });
             updateSeed(ctx, seedIndex, { events: [...seed.events, copy] });
             rerender();
@@ -1178,92 +1534,144 @@ function renderSeedDetail(
           'btn small'
         ),
         button(
-          'Remove',
+          'Delete',
           () => {
-            if (!confirm(`Remove event "${event.label}"?`)) return;
-            updateSeed(ctx, seedIndex, {
-              events: seed.events.filter((_, i) => i !== eventIndex),
-            });
+            if (!confirmDeleteEvent(event.label)) return;
+            deleteEvent(ctx, seedIndex, eventIndex);
             rerender();
           },
           'btn danger small'
         )
       )
     );
-  });
+  }
+
+  return list;
+}
+
+function renderBrowse(
+  root: HTMLElement,
+  ctx: EventsEditorContext,
+  errorsBox: HTMLElement,
+  rerender: () => void
+): void {
+  const toolbar = el(
+    'div',
+    { className: 'toolbar' },
+    renderModeToggle(rerender),
+    button(
+      'Add event',
+      () => {
+        const seedIndex = ensureDefaultSeed(ctx);
+        const label = promptNewEventLabel();
+        if (!label) return;
+        const created = addEventToSeed(ctx, seedIndex, label);
+        view = {
+          kind: 'event',
+          seedIndex: created.seedIndex,
+          eventIndex: created.eventIndex,
+        };
+        rerender();
+      },
+      'btn'
+    ),
+    button(
+      'Save events',
+      () => {
+        void saveEvents(ctx, errorsBox);
+      },
+      'btn primary'
+    )
+  );
 
   root.append(
-    renderBreadcrumb(ctx, rerender),
     el(
       'div',
       { className: 'panel' },
-      el('h2', { text: `Seed: ${seed.id}` }),
+      el('h2', { text: 'Events' }),
       toolbar,
+      renderFilterBar(ctx, rerender),
       errorsBox,
-      form,
-      el('h3', { text: 'Events' }),
-      list
+      browseMode === 'list' ? renderFlatList(ctx, rerender) : renderTreeView(ctx, rerender)
     )
   );
 }
 
-function renderEventDetail(
-  root: HTMLElement,
+function renderLimitedPersonalityChips(
+  values: string[],
+  options: string[],
+  onChange: (next: string[]) => void
+): HTMLElement {
+  const wrap = el('div', { className: 'chip-list' });
+  values.forEach((value, index) => {
+    wrap.append(
+      el(
+        'span',
+        { className: 'chip' },
+        value,
+        button(
+          '×',
+          () => onChange(values.filter((_, i) => i !== index)),
+          'btn small'
+        )
+      )
+    );
+  });
+  if (values.length < 2) {
+    wrap.append(
+      selectInput(
+        '',
+        [
+          { value: '', label: '+ add…' },
+          ...options
+            .filter((o) => !values.includes(o))
+            .map((a) => ({ value: a, label: a })),
+        ],
+        (v) => {
+          if (!v) return;
+          onChange([...values, v].slice(0, 2));
+        }
+      )
+    );
+  }
+  return wrap;
+}
+
+function renderEventForm(
   ctx: EventsEditorContext,
-  seedIndex: number,
-  eventIndex: number,
+  loc: { seedIndex: number; eventIndex: number },
   errorsBox: HTMLElement,
   rerender: () => void
-): void {
+): HTMLElement {
+  const seedIndex = loc.seedIndex;
+  const eventIndex = loc.eventIndex;
   const seed = ctx.getSeeds().seeds[seedIndex];
   const event = seed?.events[eventIndex];
   if (!seed || !event) {
-    view = { kind: 'seeds' };
-    rerender();
-    return;
+    return el('div', { className: 'empty', text: 'Event not found.' });
   }
 
   const cardAliases = ctx.getCardAliases();
   const personalityIds = ctx.getPersonalities().map((p) => p.id);
-  const eventIds = [
-    ...new Set(
-      ctx.getSeeds().seeds.flatMap((s) => s.events.map((e) => String(e.id)))
-    ),
-  ].sort((a, b) => Number(a) - Number(b));
-  const dealBreakerAliases = (event.dealBreakers ?? []).map((d) => d.alias);
 
   const toolbar = el(
     'div',
     { className: 'toolbar' },
     button(
+      'Delete',
+      () => {
+        if (!confirmDeleteEvent(event.label)) return;
+        deleteEvent(ctx, seedIndex, eventIndex);
+        view = { kind: 'browse' };
+        document.querySelector('.modal-overlay')?.remove();
+        rerender();
+      },
+      'btn danger'
+    ),
+    button(
       'Save events',
-      async () => {
-        const data = ctx.getSeeds();
-        const errors = validateEventSeeds(
-          data,
-          new Set(cardAliases),
-          collectPersonalityIds(ctx.getPersonalities())
-        );
-        clear(errorsBox);
-        if (errors.length) {
-          errorsBox.className = 'errors';
-          errorsBox.append(
-            el('strong', { text: 'Fix before saving:' }),
-            el(
-              'ul',
-              {},
-              ...errors.map((e) => el('li', { text: e }))
-            )
-          );
-          ctx.setStatus('Validation failed', 'err');
-          return;
-        }
-        try {
-          await saveData('event-templates', data);
-          ctx.setStatus('Events saved', 'ok');
-        } catch (err) {
-          ctx.setStatus(err instanceof Error ? err.message : String(err), 'err');
-        }
+      () => {
+        void saveEvents(ctx, errorsBox);
       },
       'btn primary'
     )
@@ -1322,57 +1730,138 @@ function renderEventDetail(
     ),
     field(
       'Is base',
-      checkboxInput(!!event.isBase, (v) =>
-        updateEvent(ctx, seedIndex, eventIndex, { isBase: v || undefined })
-      )
+      checkboxInput(!!event.isBase, (v) => {
+        updateEvent(ctx, seedIndex, eventIndex, {
+          isBase: v || undefined,
+        });
+        rerender();
+      })
     )
   );
 
+  const panel = el('div');
+  panel.append(
+    toolbar,
+    errorsBox,
+    el('h3', { text: 'Base fields' }),
+    baseForm
+  );
+
+  if (event.isBase) {
+    panel.append(
+      field(
+        'Personalities (seed pack)',
+        renderLimitedPersonalityChips(
+          [...seed.personalities],
+          personalityIds,
+          (next) => {
+            const moved = moveEventToPersonalities(
+              ctx,
+              seedIndex,
+              eventIndex,
+              next
+            );
+            loc.seedIndex = moved.seedIndex;
+            loc.eventIndex = moved.eventIndex;
+            if (view.kind === 'event') {
+              view = {
+                kind: 'event',
+                seedIndex: moved.seedIndex,
+                eventIndex: moved.eventIndex,
+              };
+            }
+            rerender();
+          }
+        ),
+        true
+      ),
+      el('div', {
+        className: 'meta',
+        text: `Current seed: ${seed.id}`,
+      })
+    );
+  }
+
+  const liveSeed = ctx.getSeeds().seeds[loc.seedIndex];
+  const liveEvent = liveSeed?.events[loc.eventIndex];
+  if (!liveSeed || !liveEvent) {
+    return panel;
+  }
+
+  panel.append(
+    renderModifiersSection(
+      liveEvent,
+      loc.seedIndex,
+      loc.eventIndex,
+      ctx,
+      cardAliases,
+      rerender
+    ),
+    renderDealBreakersSection(
+      liveEvent,
+      loc.seedIndex,
+      loc.eventIndex,
+      ctx,
+      cardAliases,
+      rerender
+    ),
+    renderResultsSection(
+      liveEvent,
+      loc.seedIndex,
+      loc.eventIndex,
+      ctx,
+      cardAliases,
+      personalityIds,
+      liveSeed,
+      (liveEvent.dealBreakers ?? []).map((d) => d.alias),
+      rerender
+    ),
+    renderOutputsSection(
+      liveEvent,
+      loc.seedIndex,
+      loc.eventIndex,
+      ctx,
+      cardAliases,
+      rerender
+    )
+  );
+
+  return panel;
+}
+
+function renderEventDetail(
+  root: HTMLElement,
+  ctx: EventsEditorContext,
+  seedIndex: number,
+  eventIndex: number,
+  errorsBox: HTMLElement,
+  rerender: () => void
+): void {
+  const seed = ctx.getSeeds().seeds[seedIndex];
+  const event = seed?.events[eventIndex];
+  if (!seed || !event) {
+    view = { kind: 'browse' };
+    rerender();
+    return;
+  }
+
+  const loc = { seedIndex, eventIndex };
   root.append(
     renderBreadcrumb(ctx, rerender),
     el(
       'div',
       { className: 'panel' },
       el('h2', { text: `Event #${event.id}` }),
-      toolbar,
-      errorsBox,
-      el('h3', { text: 'Base fields' }),
-      baseForm,
-      renderModifiersSection(
-        event,
-        seedIndex,
-        eventIndex,
-        ctx,
-        cardAliases,
-        rerender
-      ),
-      renderDealBreakersSection(
-        event,
-        seedIndex,
-        eventIndex,
-        ctx,
-        cardAliases,
-        rerender
-      ),
-      renderResultsSection(
-        event,
-        seedIndex,
-        eventIndex,
-        ctx,
-        cardAliases,
-        personalityIds,
-        eventIds,
-        dealBreakerAliases,
-        rerender
-      ),
-      renderOutputsSection(
-        event,
-        seedIndex,
-        eventIndex,
-        ctx,
-        cardAliases,
-        rerender
-      )
+      renderEventForm(ctx, loc, errorsBox, () => {
+        if (view.kind === 'event') {
+          view = {
+            kind: 'event',
+            seedIndex: loc.seedIndex,
+            eventIndex: loc.eventIndex,
+          };
+        }
+        rerender();
+      })
     )
   );
 }
@@ -1381,14 +1870,13 @@ export function renderEventsEditor(
   root: HTMLElement,
   ctx: EventsEditorContext
 ): void {
+  disposeEventsTreeFlows();
   const rerender = () => renderEventsEditor(root, ctx);
   clear(root);
   const errorsBox = el('div');
 
-  if (view.kind === 'seeds') {
-    renderSeedsList(root, ctx, errorsBox, rerender);
-  } else if (view.kind === 'seed') {
-    renderSeedDetail(root, ctx, view.seedIndex, errorsBox, rerender);
+  if (view.kind === 'browse') {
+    renderBrowse(root, ctx, errorsBox, rerender);
   } else {
     renderEventDetail(
       root,
@@ -1401,7 +1889,10 @@ export function renderEventsEditor(
   }
 }
 
-/** Reset navigation when leaving the Events tab (optional). */
+/** Reset navigation when leaving the Events tab. */
 export function resetEventsView(): void {
-  view = { kind: 'seeds' };
+  disposeEventsTreeFlows();
+  view = { kind: 'browse' };
+  browseMode = 'list';
+  personalityFilter = [];
 }
