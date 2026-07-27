@@ -1,4 +1,4 @@
-import { saveData } from '../api';
+import { saveData, uploadCardImage } from '../api';
 import {
   button,
   clear,
@@ -88,6 +88,65 @@ function renderFadedEmotions(
     button(
       'Clear',
       () => onChange(null),
+      'btn small'
+    )
+  );
+
+  return wrap;
+}
+
+function renderImageField(
+  card: EmotionCatalogEntry,
+  suit: string,
+  index: number,
+  ctx: CardsEditorContext,
+  root: HTMLElement
+): HTMLElement {
+  const wrap = el('div', { className: 'chip-list' });
+
+  if (card.image) {
+    wrap.append(
+      el('img', {
+        className: 'image-preview',
+        src: card.image,
+        alt: card.name,
+      }) as HTMLImageElement
+    );
+  }
+
+  const fileInput = el('input', {
+    type: 'file',
+    accept: 'image/png,image/jpeg,image/webp,image/gif',
+  }) as HTMLInputElement;
+
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files?.[0];
+    if (!file) return;
+    try {
+      ctx.setStatus('Uploading…');
+      const path = await uploadCardImage(card.id || 'card', file);
+      ctx.setCatalog(
+        updateCard(ctx.getCatalog(), suit, index, { image: path })
+      );
+      ctx.setStatus('Image uploaded (remember to Save cards)', 'ok');
+      ctx.onChanged();
+      renderCardsEditor(root, ctx);
+    } catch (err) {
+      ctx.setStatus(err instanceof Error ? err.message : String(err), 'err');
+    }
+  });
+
+  wrap.append(
+    fileInput,
+    button(
+      'Clear image',
+      () => {
+        ctx.setCatalog(
+          updateCard(ctx.getCatalog(), suit, index, { image: undefined })
+        );
+        ctx.onChanged();
+        renderCardsEditor(root, ctx);
+      },
       'btn small'
     )
   );
@@ -228,6 +287,11 @@ export function renderCardsEditor(
           })
         ),
         field(
+          'Image',
+          renderImageField(card, suit, index, ctx, root),
+          true
+        ),
+        field(
           'Faded emotions',
           renderFadedEmotions(card, allAliases, (next) => {
             ctx.setCatalog(
@@ -265,7 +329,6 @@ export function renderCardsEditor(
     content.append(suitBlock);
   }
 
-  // Persist ensured suits if any were missing
   if (JSON.stringify(catalog) !== JSON.stringify(ctx.getCatalog())) {
     ctx.setCatalog(catalog);
   }

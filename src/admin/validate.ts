@@ -31,6 +31,12 @@ export function collectEventIds(seeds: EventSeedsFile): Set<string> {
   return ids;
 }
 
+export function collectSeedEventIds(
+  seed: EventSeedsFile['seeds'][number]
+): Set<string> {
+  return new Set(seed.events.map((event) => String(event.id)));
+}
+
 function asAliasList(value: string | string[]): string[] {
   return Array.isArray(value) ? value : [value];
 }
@@ -118,7 +124,7 @@ function validateAction(
       errors.push(`${path}: createEvent.event is required`);
     } else if (!eventIds.has(action.event)) {
       errors.push(
-        `${path}: createEvent.event "${action.event}" not found in any seed`
+        `${path}: createEvent.event "${action.event}" not found in this seed`
       );
     }
     const ref = action.personality;
@@ -153,7 +159,6 @@ export function validateEventSeeds(
 ): string[] {
   const errors: string[] = [];
   const seedIds = new Set<string>();
-  const eventIds = collectEventIds(seedsFile);
 
   seedsFile.seeds.forEach((seed, si) => {
     const seedPath = `seeds[${si}] (${seed.id || '?'})`;
@@ -173,6 +178,7 @@ export function validateEventSeeds(
       }
     });
 
+    const seedEventIds = collectSeedEventIds(seed);
     const eventIdSeen = new Set<number>();
     seed.events.forEach((event, ei) => {
       const path = `${seedPath}.events[${ei}]`;
@@ -225,7 +231,7 @@ export function validateEventSeeds(
               `${rPath}.actions[${ai}]`,
               cardAliases,
               personalityIds,
-              eventIds
+              seedEventIds
             )
           );
         });

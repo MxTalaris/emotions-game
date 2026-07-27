@@ -403,3 +403,243 @@ body {
   border-radius: 6px;
   border: 1px solid var(--border);
 }
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.filter-label {
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 4px;
+}
+
+.mode-toggle {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.tree-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tree-seed-panel {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+
+.tree-seed-panel h3 {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+}
+
+.tree-flow-host {
+  position: relative;
+  min-height: 520px;
+  height: 65vh;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: #f3f5f9;
+  isolation: isolate;
+}
+
+.rf-tree-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 520px;
+  color: #1f2937;
+}
+
+.rf-tree-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  background: #e8ecf3;
+  border-bottom: 1px solid #d5dae6;
+  z-index: 2;
+}
+
+.rf-tree-toolbar .meta {
+  color: #667085;
+  font-size: 0.8rem;
+}
+
+.rf-tree-canvas {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+}
+
+/* React Flow needs an explicit sized containing block to receive pointer events */
+.tree-flow-host .react-flow {
+  position: absolute !important;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  background: #f3f5f9;
+}
+
+.tree-flow-host .react-flow__pane,
+.tree-flow-host .react-flow__viewport,
+.tree-flow-host .react-flow__renderer {
+  width: 100%;
+  height: 100%;
+}
+
+.tree-flow-host .react-flow__controls {
+  position: absolute !important;
+  left: 10px;
+  bottom: 10px;
+  top: auto !important;
+  z-index: 6;
+  box-shadow: 0 0 2px 1px rgba(0, 0, 0, 0.08);
+}
+
+.tree-flow-host .react-flow__controls-button {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
+  padding: 0 !important;
+  background: #fff !important;
+  border: none !important;
+  border-bottom: 1px solid #eee !important;
+  color: #222 !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.tree-flow-host .react-flow__edge-path {
+  stroke: #3d4a63 !important;
+  stroke-width: 2 !important;
+  fill: none !important;
+}
+
+.tree-flow-host .react-flow__attribution {
+  display: none !important;
+}
+
+.rf-event-node {
+  width: 200px;
+  min-height: 52px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08);
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+  background: #fecaca;
+  cursor: pointer;
+}
+
+.rf-event-node--base {
+  background: #bfdbfe;
+}
+
+.rf-event-node--branch {
+  background: #bbf7d0;
+}
+
+.rf-event-node--leaf {
+  background: #fecaca;
+}
+
+.rf-event-node.selected {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+}
+
+.rf-event-node__title {
+  line-height: 1.3;
+  word-break: break-word;
+  pointer-events: none;
+}
+
+.rf-handle {
+  width: 10px !important;
+  height: 10px !important;
+  background: #3b82f6 !important;
+  border: 2px solid #fff !important;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 16px;
+  overflow: auto;
+  z-index: 1000;
+}
+
+.modal-dialog {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: min(920px, 100%);
+  max-height: calc(100vh - 80px);
+  overflow: auto;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 1;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.modal-body {
+  padding: 16px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.image-preview {
+  width: 80px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}

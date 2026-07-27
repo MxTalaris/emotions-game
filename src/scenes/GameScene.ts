@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { CardPreviewPopup } from '../entities/CardPreviewPopup';
-import { CardSprite } from '../entities/CardSprite';
+import { CardSprite, cardTextureKey } from '../entities/CardSprite';
 import { EventCircle } from '../entities/EventCircle';
 import { FeelButton } from '../entities/FeelButton';
 import { FlowerDetailPopup } from '../entities/FlowerDetailPopup';
@@ -45,7 +45,7 @@ import {
   MUSIC_BUTTON,
   TREE_ZOOM,
 } from '../config/gameConfig';
-import { APATHY_CARD, getInitialHandCards } from '../data/cards';
+import { APATHY_CARD, cards, getInitialHandCards } from '../data/cards';
 import { isCatalogPersonalityId } from '../data/personalities';
 import {
   buildBranchCurve,
@@ -129,6 +129,13 @@ export class GameScene extends Phaser.Scene {
 
   preload(): void {
     this.load.audio('bgm-chill', 'assets/audio/bgm-chill.ogg');
+
+    const seen = new Set<string>();
+    for (const definition of [...cards, APATHY_CARD]) {
+      if (!definition.image || seen.has(definition.alias)) continue;
+      seen.add(definition.alias);
+      this.load.image(cardTextureKey(definition.alias), definition.image);
+    }
   }
 
   create(): void {

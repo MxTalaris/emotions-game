@@ -7,9 +7,13 @@ import {
 import { getSuitColor } from '../data/cards';
 import { CardInstance } from '../types';
 
+export function cardTextureKey(alias: string): string {
+  return `card-img-${alias}`;
+}
+
 export class CardSprite extends Phaser.GameObjects.Container {
   readonly cardData: CardInstance;
-  private background: Phaser.GameObjects.Rectangle;
+  private background: Phaser.GameObjects.GameObject;
   private label: Phaser.GameObjects.Text;
   private homeX: number;
   private homeY: number;
@@ -33,9 +37,28 @@ export class CardSprite extends Phaser.GameObjects.Container {
     this.homeY = y;
 
     const color = getSuitColor(cardData.suit);
+    const textureKey = cardTextureKey(cardData.alias);
+    const hasImage =
+      !!cardData.image && scene.textures.exists(textureKey);
 
-    this.background = scene.add.rectangle(0, 0, CARD_WIDTH, CARD_HEIGHT, color);
-    this.background.setStrokeStyle(2, 0xffffff);
+    const children: Phaser.GameObjects.GameObject[] = [];
+
+    if (hasImage) {
+      const image = scene.add.image(0, 0, textureKey);
+      image.setDisplaySize(CARD_WIDTH, CARD_HEIGHT);
+      this.background = image;
+      children.push(image);
+
+      const border = scene.add.rectangle(0, 0, CARD_WIDTH, CARD_HEIGHT);
+      border.setStrokeStyle(2, 0xffffff);
+      border.setFillStyle(0x000000, 0);
+      children.push(border);
+    } else {
+      const rect = scene.add.rectangle(0, 0, CARD_WIDTH, CARD_HEIGHT, color);
+      rect.setStrokeStyle(2, 0xffffff);
+      this.background = rect;
+      children.push(rect);
+    }
 
     this.label = scene.add.text(0, -12, cardData.name, {
       fontSize: '14px',
@@ -52,7 +75,7 @@ export class CardSprite extends Phaser.GameObjects.Container {
     });
     energyLabel.setOrigin(0.5);
 
-    this.add([this.background, this.label, energyLabel]);
+    this.add([...children, this.label, energyLabel]);
     this.setSize(CARD_WIDTH, CARD_HEIGHT);
     this.setInteractive({ draggable: true, useHandCursor: true });
     this.setDepth(40);

@@ -115,3 +115,35 @@ export function button(
     onClick,
   }) as HTMLButtonElement;
 }
+
+/** Simple modal overlay. Call close() to remove it from the DOM. */
+export function openModal(
+  title: string,
+  body: HTMLElement,
+  actions?: HTMLElement[]
+): { overlay: HTMLElement; close: () => void } {
+  const overlay = el('div', { className: 'modal-overlay' });
+  const dialog = el('div', { className: 'modal-dialog' });
+  const close = () => overlay.remove();
+
+  dialog.append(
+    el(
+      'div',
+      { className: 'modal-header' },
+      el('h2', { text: title }),
+      button('×', close, 'btn small')
+    ),
+    el('div', { className: 'modal-body' }, body)
+  );
+
+  if (actions?.length) {
+    dialog.append(el('div', { className: 'modal-actions' }, ...actions));
+  }
+
+  overlay.append(dialog);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) close();
+  });
+  document.body.append(overlay);
+  return { overlay, close };
+}

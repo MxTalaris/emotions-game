@@ -14,28 +14,63 @@ module.exports = {
     clean: true,
   },
   resolve: {
-    extensions: ['.ts', '.js'],
+    extensions: ['.tsx', '.ts', '.js'],
   },
   module: {
     rules: [
       {
-        test: /\.ts$/,
-        use: 'ts-loader',
+        test: /\.tsx?$/,
+        use: {
+          loader: 'ts-loader',
+          options: {
+            configFile: path.resolve(__dirname, 'tsconfig.json'),
+            compilerOptions: {
+              jsx: 'react-jsx',
+            },
+          },
+        },
         exclude: /node_modules/,
+      },
+      // Inject React Flow CSS via style-loader (must be before asset/source).
+      {
+        test: /\.css$/,
+        include: path.resolve(__dirname, 'node_modules/@xyflow'),
+        use: ['style-loader', 'css-loader'],
       },
       {
         test: /\.css$/,
+        exclude: /node_modules/,
         type: 'asset/source',
       },
     ],
   },
   devServer: {
-    static: {
-      directory: path.join(__dirname, 'dist'),
-    },
+    static: [
+      {
+        directory: path.join(__dirname, 'dist'),
+      },
+      {
+        directory: path.join(__dirname, 'storage'),
+        publicPath: '/storage',
+      },
+    ],
     port: 8080,
     hot: true,
     open: true,
+    client: {
+      overlay: {
+        errors: true,
+        warnings: false,
+        runtimeErrors: (error) => {
+          const message = error?.message ?? String(error ?? '');
+          // Benign browser warning often triggered by React Flow layout.
+          if (/ResizeObserver loop/i.test(message)) {
+            return false;
+          }
+          return true;
+        },
+      },
+    },
     setupMiddlewares: (middlewares, devServer) => {
       if (!devServer.app) {
         throw new Error('webpack-dev-server app is missing');
@@ -56,7 +91,10 @@ module.exports = {
       chunks: ['admin'],
     }),
     new CopyWebpackPlugin({
-      patterns: [{ from: 'assets', to: 'assets', noErrorOnMissing: true }],
+      patterns: [
+        { from: 'assets', to: 'assets', noErrorOnMissing: true },
+        { from: 'storage', to: 'storage', noErrorOnMissing: true },
+      ],
     }),
   ],
 };

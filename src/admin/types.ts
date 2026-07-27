@@ -11,6 +11,8 @@ export interface EmotionCatalogEntry {
   energy: number;
   duration: number;
   fadedEmotion: string[] | null;
+  /** Public URL path, e.g. /storage/cards/joy-basic-….png */
+  image?: string;
 }
 
 export interface EmotionSuitGroup {

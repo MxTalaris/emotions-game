@@ -7,6 +7,7 @@ import {
 } from '../config/gameConfig';
 import { getSuitColor } from '../data/cards';
 import { CardInstance } from '../types';
+import { cardTextureKey } from './CardSprite';
 
 const PREVIEW_SCALE = 2.35;
 
@@ -29,14 +30,37 @@ export class CardPreviewPopup extends Phaser.GameObjects.Container {
     const cardHeight = CARD_HEIGHT * PREVIEW_SCALE;
     const centerX = GAME_WIDTH / 2;
     const centerY = GAME_HEIGHT / 2;
-    const background = scene.add.rectangle(
-      centerX,
-      centerY,
-      cardWidth,
-      cardHeight,
-      getSuitColor(card.suit)
-    );
-    background.setStrokeStyle(4, 0xffffff);
+    const textureKey = cardTextureKey(card.alias);
+    const hasImage = !!card.image && scene.textures.exists(textureKey);
+
+    const visuals: Phaser.GameObjects.GameObject[] = [];
+
+    if (hasImage) {
+      const image = scene.add.image(centerX, centerY, textureKey);
+      image.setDisplaySize(cardWidth, cardHeight);
+      image.setInteractive({ useHandCursor: true });
+      visuals.push(image);
+      const border = scene.add.rectangle(
+        centerX,
+        centerY,
+        cardWidth,
+        cardHeight
+      );
+      border.setStrokeStyle(4, 0xffffff);
+      border.setFillStyle(0x000000, 0);
+      visuals.push(border);
+    } else {
+      const background = scene.add.rectangle(
+        centerX,
+        centerY,
+        cardWidth,
+        cardHeight,
+        getSuitColor(card.suit)
+      );
+      background.setStrokeStyle(4, 0xffffff);
+      background.setInteractive({ useHandCursor: true });
+      visuals.push(background);
+    }
 
     const title = scene.add
       .text(centerX, centerY - cardHeight * 0.28, card.name, {
@@ -75,10 +99,13 @@ export class CardPreviewPopup extends Phaser.GameObjects.Container {
     };
 
     dim.on('pointerdown', close);
-    background.setInteractive({ useHandCursor: true });
-    background.on('pointerdown', close);
 
-    this.add([dim, background, title, energy, details]);
+    const clickTarget = visuals[0] as
+      | Phaser.GameObjects.Image
+      | Phaser.GameObjects.Rectangle;
+    clickTarget.on('pointerdown', close);
+
+    this.add([dim, ...visuals, title, energy, details]);
     this.setDepth(320);
     this.setScrollFactor(0);
     this.setAlpha(0);
