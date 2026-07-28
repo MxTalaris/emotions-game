@@ -95,9 +95,7 @@
               },
               "exclusive": false,
               "priority": 0,
-              "outputEmotions": [
-                "disgust-basic"
-              ]
+              "outputEmotions": "input"
             },
             {
               "input": {

@@ -135,6 +135,8 @@ export interface GameEventInstance extends GameEventDefinition {
   parentInstanceId?: number;
   /** Card model aliases placed on this event (order preserved). */
   placedCardAliases: CardAlias[];
+  /** Subset of placedCardAliases attached since the last Sentir. */
+  thisTurnPlacedCardAliases: CardAlias[];
   progress: number;
   cardsPlacedThisTurn: number;
   /** Turns elapsed since this event appeared (incremented on Sentir). */

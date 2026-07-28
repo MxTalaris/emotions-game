@@ -18,6 +18,9 @@ function normalizeOutputEmotions(
 }
 
 function getThisTurnPlacedAliases(event: GameEventInstance): CardAlias[] {
+  if (event.thisTurnPlacedCardAliases?.length) {
+    return [...event.thisTurnPlacedCardAliases];
+  }
   const { placedCardAliases, cardsPlacedThisTurn } = event;
   if (cardsPlacedThisTurn <= 0) return [];
   return placedCardAliases.slice(-cardsPlacedThisTurn);

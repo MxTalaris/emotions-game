@@ -24,6 +24,7 @@ export function createEventInstance(
     depth: position.depth,
     parentInstanceId,
     placedCardAliases: [],
+    thisTurnPlacedCardAliases: [],
     progress: 0,
     cardsPlacedThisTurn: 0,
     turnsAlive: 0,
