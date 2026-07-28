@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { domText, DomTextHandle } from '../utils/domUi';
 
 interface FeelButtonOptions {
   x: number;
@@ -11,7 +12,7 @@ interface FeelButtonOptions {
 
 export class FeelButton extends Phaser.GameObjects.Container {
   private background: Phaser.GameObjects.Rectangle;
-  private label: Phaser.GameObjects.Text;
+  private label: DomTextHandle;
   private enabled = true;
 
   constructor(scene: Phaser.Scene, options: FeelButtonOptions) {
@@ -26,14 +27,15 @@ export class FeelButton extends Phaser.GameObjects.Container {
     );
     this.background.setStrokeStyle(2, 0x7986cb);
 
-    this.label = scene.add.text(0, 0, options.label, {
+    this.label = domText(scene, options.label, {
       fontSize: '16px',
       color: '#ffffff',
-      fontStyle: 'bold',
+      fontWeight: 'bold',
+      textAlign: 'center',
     });
-    this.label.setOrigin(0.5);
+    this.label.dom.setOrigin(0.5);
 
-    this.add([this.background, this.label]);
+    this.add([this.background, this.label.dom]);
     this.setSize(options.width, options.height);
     this.setInteractive({ useHandCursor: true });
 

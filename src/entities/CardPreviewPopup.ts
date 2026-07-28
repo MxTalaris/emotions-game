@@ -7,6 +7,7 @@ import {
 } from '../config/gameConfig';
 import { getSuitColor } from '../data/cards';
 import { CardInstance } from '../types';
+import { domText } from '../utils/domUi';
 import { cardTextureKey } from './CardSprite';
 
 const PREVIEW_SCALE = 2.35;
@@ -62,36 +63,40 @@ export class CardPreviewPopup extends Phaser.GameObjects.Container {
       visuals.push(background);
     }
 
-    const title = scene.add
-      .text(centerX, centerY - cardHeight * 0.28, card.name, {
-        fontSize: '26px',
-        color: '#ffffff',
-        fontStyle: 'bold',
-        align: 'center',
-        wordWrap: { width: cardWidth - 28 },
-      })
-      .setOrigin(0.5);
+    const title = domText(scene, card.name, {
+      fontSize: '26px',
+      color: '#ffffff',
+      fontWeight: 'bold',
+      textAlign: 'center',
+      maxWidth: `${cardWidth - 28}px`,
+      wordBreak: 'break-word',
+    });
+    title.dom
+      .setPosition(centerX, centerY - cardHeight * 0.28)
+      .setOrigin(0.5)
+      .setScrollFactor(0);
 
-    const energy = scene.add
-      .text(centerX, centerY + 8, `${card.energyAmount}`, {
-        fontSize: '38px',
-        color: '#ffffff',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5);
+    const energy = domText(scene, `${card.energyAmount}`, {
+      fontSize: '38px',
+      color: '#ffffff',
+      fontWeight: 'bold',
+      textAlign: 'center',
+    });
+    energy.dom.setPosition(centerX, centerY + 8).setOrigin(0.5).setScrollFactor(0);
 
-    const details = scene.add
-      .text(
-        centerX,
-        centerY + cardHeight * 0.3,
-        `Energia ${card.energyAmount}  •  Duração ${card.duration}`,
-        {
-          fontSize: '14px',
-          color: '#ffffff',
-          align: 'center',
-        }
-      )
-      .setOrigin(0.5);
+    const details = domText(
+      scene,
+      `Energia ${card.energyAmount}  •  Duração ${card.duration}`,
+      {
+        fontSize: '14px',
+        color: '#ffffff',
+        textAlign: 'center',
+      }
+    );
+    details.dom
+      .setPosition(centerX, centerY + cardHeight * 0.3)
+      .setOrigin(0.5)
+      .setScrollFactor(0);
 
     const close = () => {
       onClose();
@@ -105,7 +110,7 @@ export class CardPreviewPopup extends Phaser.GameObjects.Container {
       | Phaser.GameObjects.Rectangle;
     clickTarget.on('pointerdown', close);
 
-    this.add([dim, ...visuals, title, energy, details]);
+    this.add([dim, ...visuals, title.dom, energy.dom, details.dom]);
     this.setDepth(320);
     this.setScrollFactor(0);
     this.setAlpha(0);

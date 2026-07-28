@@ -53,6 +53,7 @@ import {
   Point,
   strokeCubicProgress,
 } from '../utils/gardenGraphics';
+import { css, domText, DomTextHandle, GAME_FONT, stopPointerBubble } from '../utils/domUi';
 
 type BranchCurve = [Point, Point, Point, Point];
 
@@ -103,7 +104,7 @@ export class GameScene extends Phaser.Scene {
   private viewportGesture: ViewportGesture | null = null;
   private feelButton!: FeelButton;
   private musicButton!: MusicToggleButton;
-  private turnText!: Phaser.GameObjects.Text;
+  private turnText!: DomTextHandle;
   private bgm: Phaser.Sound.BaseSound | null = null;
   private musicEnabled = false;
   private personalityClouds: PersonalityCloud[] = [];
@@ -807,12 +808,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createTurnDisplay(): void {
-    this.turnText = this.add.text(16, 16, this.getTurnLabel(), {
+    this.turnText = domText(this, this.getTurnLabel(), {
       fontSize: '16px',
       color: '#3d3428',
-      fontStyle: 'bold',
+      fontWeight: 'bold',
     });
-    this.turnText.setDepth(200);
+    this.turnText.dom.setPosition(16, 16).setOrigin(0, 0).setScrollFactor(0).setDepth(200);
   }
 
   private getTurnLabel(): string {
@@ -1231,56 +1232,79 @@ export class GameScene extends Phaser.Scene {
       .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.65)
       .setInteractive();
 
-    const panel = this.add.rectangle(
-      GAME_WIDTH / 2,
-      GAME_HEIGHT / 2,
-      340,
-      200,
-      0x2d3561
-    );
-    panel.setStrokeStyle(3, 0x66bb6a);
+    const panelW = 340;
+    const panelH = 200;
+    const panelLeft = GAME_WIDTH / 2 - panelW / 2;
+    const panelTop = GAME_HEIGHT / 2 - panelH / 2;
 
-    const title = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 48, 'Sucesso!', {
-        fontSize: '28px',
-        color: '#66bb6a',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5);
+    const panel = document.createElement('div');
+    panel.style.cssText = css({
+      width: `${panelW}px`,
+      height: `${panelH}px`,
+      fontFamily: GAME_FONT,
+      background: '#2d3561',
+      border: '3px solid #66bb6a',
+      boxSizing: 'border-box',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '12px',
+      padding: '16px',
+    });
+    stopPointerBubble(panel);
 
-    const subtitle = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 8, 'Você descobriu uma personalidade.', {
-        fontSize: '14px',
-        color: '#c5cae9',
-        align: 'center',
-      })
-      .setOrigin(0.5);
+    const title = document.createElement('h2');
+    title.textContent = 'Sucesso!';
+    title.style.cssText = css({
+      margin: '0',
+      fontSize: '28px',
+      color: '#66bb6a',
+      fontWeight: 'bold',
+      textAlign: 'center',
+    });
 
-    const buttonBg = this.add.rectangle(
-      GAME_WIDTH / 2,
-      GAME_HEIGHT / 2 + 52,
-      120,
-      44,
-      0x43a047
-    );
-    buttonBg.setStrokeStyle(2, 0x66bb6a);
-    buttonBg.setInteractive({ useHandCursor: true });
+    const subtitle = document.createElement('p');
+    subtitle.textContent = 'Você descobriu uma personalidade.';
+    subtitle.style.cssText = css({
+      margin: '0',
+      fontSize: '14px',
+      color: '#c5cae9',
+      textAlign: 'center',
+    });
 
-    const buttonLabel = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 52, 'YAY', {
-        fontSize: '18px',
-        color: '#ffffff',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5);
-
-    buttonBg.on('pointerover', () => buttonBg.setFillStyle(0x66bb6a));
-    buttonBg.on('pointerout', () => buttonBg.setFillStyle(0x43a047));
-    buttonBg.on('pointerdown', () => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = 'YAY';
+    button.style.cssText = css({
+      width: '120px',
+      height: '44px',
+      fontFamily: GAME_FONT,
+      fontSize: '18px',
+      fontWeight: 'bold',
+      color: '#ffffff',
+      background: '#43a047',
+      border: '2px solid #66bb6a',
+      cursor: 'pointer',
+      padding: '0',
+    });
+    stopPointerBubble(button);
+    button.addEventListener('mouseenter', () => {
+      button.style.background = '#66bb6a';
+    });
+    button.addEventListener('mouseleave', () => {
+      button.style.background = '#43a047';
+    });
+    button.addEventListener('click', () => {
       this.scene.start('StartScene');
     });
 
-    overlay.add([dim, panel, title, subtitle, buttonBg, buttonLabel]);
+    panel.append(title, subtitle, button);
+
+    const panelDom = this.add.dom(panelLeft, panelTop, panel);
+    panelDom.setOrigin(0, 0).setScrollFactor(0);
+
+    overlay.add([dim, panelDom]);
     this.endGameOverlay = overlay;
 
     overlay.setAlpha(0);
