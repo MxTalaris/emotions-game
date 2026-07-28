@@ -42,10 +42,11 @@ export interface DealBreaker {
 
 export type EventOutputInput =
   | { type: 'default' }
-  | { type: 'input' }
   | { type: 'suitQuantities'; suitQuantities: SuitQuantity[] }
   | { type: 'suitEnergies'; suitEnergies: SuitEnergy[] }
   | { type: 'cardEmotions'; cardEmotions: string[] };
+
+export const OUTPUT_PLACED_CARDS = 'input' as const;
 
 export interface EventOutput {
   input: EventOutputInput;
