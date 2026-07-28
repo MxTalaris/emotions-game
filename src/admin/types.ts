@@ -42,6 +42,7 @@ export interface DealBreaker {
 
 export type EventOutputInput =
   | { type: 'default' }
+  | { type: 'input' }
   | { type: 'suitQuantities'; suitQuantities: SuitQuantity[] }
   | { type: 'suitEnergies'; suitEnergies: SuitEnergy[] }
   | { type: 'cardEmotions'; cardEmotions: string[] };

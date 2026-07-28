@@ -15,6 +15,22 @@ function normalizeOutputEmotions(
   return Array.isArray(outputEmotions) ? outputEmotions : [outputEmotions];
 }
 
+function getThisTurnPlacedAliases(event: GameEventInstance): CardAlias[] {
+  const { placedCardAliases, cardsPlacedThisTurn } = event;
+  if (cardsPlacedThisTurn <= 0) return [];
+  return placedCardAliases.slice(-cardsPlacedThisTurn);
+}
+
+function resolveOutputRewardEmotions(
+  event: GameEventInstance,
+  output: EventOutput
+): CardAlias[] {
+  if (output.input.type === 'input') {
+    return getThisTurnPlacedAliases(event);
+  }
+  return normalizeOutputEmotions(output.outputEmotions);
+}
+
 function countBySuit(aliases: CardAlias[]): Map<CardSuit, number> {
   const counts = new Map<CardSuit, number>();
 
@@ -81,6 +97,7 @@ export function matchesEventOutputInput(
 
   switch (input.type) {
     case 'default':
+    case 'input':
       return event.cardsPlacedThisTurn > 0;
     case 'suitQuantities':
       return matchesSuitQuantities(event.placedCardAliases, input.suitQuantities);
@@ -116,6 +133,6 @@ export function resolveEventOutputEmotions(
       : valid;
 
   return selected.flatMap((output) =>
-    normalizeOutputEmotions(output.outputEmotions)
+    resolveOutputRewardEmotions(event, output)
   );
 }

@@ -1,5 +1,6 @@
 import { saveData } from '../api';
 import {
+  accordionSection,
   button,
   checkboxInput,
   clear,
@@ -51,6 +52,26 @@ let view: View = { kind: 'browse' };
 let browseMode: BrowseMode = 'list';
 /** Selected personality filter ids. Empty = show all. Use "basic" for empty-personality seeds. */
 let personalityFilter: string[] = [];
+/** Keeps event form accordions open across re-renders. */
+const openEventAccordions = new Set<string>(['base']);
+
+function eventAccordion(
+  id: string,
+  title: string,
+  body: HTMLElement
+): HTMLDetailsElement {
+  const details = accordionSection(
+    title,
+    body,
+    openEventAccordions.has(id)
+  );
+  details.dataset.accordionId = id;
+  details.addEventListener('toggle', () => {
+    if (details.open) openEventAccordions.add(id);
+    else openEventAccordions.delete(id);
+  });
+  return details;
+}
 
 function normalizePersonalities(personalities: string[]): string[] {
   return [...new Set(personalities)].sort();
@@ -181,7 +202,7 @@ function moveEventToPersonalities(
   eventIndex: number,
   personalities: string[]
 ): { seedIndex: number; eventIndex: number } {
-  const normalized = normalizePersonalities(personalities).slice(0, 2);
+  const normalized = normalizePersonalities(personalities);
   const file = ctx.getSeeds();
   const source = file.seeds[seedIndex];
   if (!source) return { seedIndex, eventIndex };
@@ -350,36 +371,91 @@ function aliasOptions(aliases: string[]): { value: string; label: string }[] {
   return aliases.map((a) => ({ value: a, label: a }));
 }
 
-function renderChipList(
+function renderSearchableCardPicker(
   values: string[],
-  options: string[],
-  onChange: (next: string[]) => void
+  allAliases: string[],
+  onChange: (next: string[]) => void,
+  placeholder = 'Search cards…'
 ): HTMLElement {
-  const wrap = el('div', { className: 'chip-list' });
-  values.forEach((value, index) => {
-    wrap.append(
-      el(
-        'span',
-        { className: 'chip' },
-        value,
-        button(
-          '×',
-          () => onChange(values.filter((_, i) => i !== index)),
-          'btn small'
+  const wrap = el('div', { className: 'card-picker' });
+  const chips = el('div', { className: 'chip-list' });
+  const search = el('input', {
+    type: 'search',
+    placeholder,
+    className: 'card-picker-search',
+  }) as HTMLInputElement;
+  const results = el('div', { className: 'card-picker-results' });
+  let current = [...values];
+
+  const renderChips = () => {
+    clear(chips);
+    current.forEach((value, index) => {
+      chips.append(
+        el(
+          'span',
+          { className: 'chip' },
+          value,
+          button(
+            '×',
+            () => {
+              current = current.filter((_, i) => i !== index);
+              onChange(current);
+              renderChips();
+              renderResults(search.value);
+            },
+            'btn small'
+          )
         )
+      );
+    });
+  };
+
+  const renderResults = (query: string) => {
+    clear(results);
+    const q = query.toLowerCase().trim();
+    const filtered = allAliases
+      .filter(
+        (alias) =>
+          !current.includes(alias) &&
+          (!q || alias.toLowerCase().includes(q))
       )
-    );
-  });
-  wrap.append(
-    selectInput(
-      '',
-      [{ value: '', label: '+ add…' }, ...aliasOptions(options)],
-      (v) => {
-        if (!v) return;
-        onChange([...values, v]);
-      }
-    )
-  );
+      .slice(0, 24);
+
+    if (filtered.length === 0) {
+      results.append(
+        el('div', { className: 'empty', text: 'No cards match.' })
+      );
+      return;
+    }
+
+    for (const alias of filtered) {
+      results.append(
+        button(
+          alias,
+          () => {
+            current = [...current, alias];
+            onChange(current);
+            search.value = '';
+            renderChips();
+            renderResults('');
+          },
+          'btn small card-picker-option'
+        )
+      );
+    }
+  };
+
+  const stopBubble = (e: Event) => e.stopPropagation();
+  wrap.addEventListener('click', stopBubble);
+  wrap.addEventListener('mousedown', stopBubble);
+  search.addEventListener('click', stopBubble);
+  search.addEventListener('mousedown', stopBubble);
+  results.addEventListener('click', stopBubble);
+  results.addEventListener('mousedown', stopBubble);
+  search.addEventListener('input', () => renderResults(search.value));
+  renderChips();
+  renderResults('');
+  wrap.append(chips, search, results);
   return wrap;
 }
 
@@ -700,9 +776,8 @@ function renderDealBreakersSection(
         rerender();
       }),
       el('h3', { text: 'Card emotions' }),
-      renderChipList(db.cardEmotions, cardAliases, (next) => {
+      renderSearchableCardPicker(db.cardEmotions, cardAliases, (next) => {
         setDb({ cardEmotions: next });
-        rerender();
       })
     );
     section.append(block);
@@ -820,12 +895,11 @@ function renderActionEditor(
       : [action.emotions];
     block.append(
       el('h3', { text: 'Emotions' }),
-      renderChipList(emotions, cardAliases, (next) => {
+      renderSearchableCardPicker(emotions, cardAliases, (next) => {
         onChange({
           ...action,
           emotions: next.length === 1 ? next[0] : next,
         });
-        rerender();
       })
     );
   } else if (action.type === 'generatePersonality') {
@@ -1043,6 +1117,7 @@ function renderResultsSection(
 
 function defaultOutputInput(type: EventOutputInput['type']): EventOutputInput {
   if (type === 'default') return { type: 'default' };
+  if (type === 'input') return { type: 'input' };
   if (type === 'suitQuantities') return { type: 'suitQuantities', suitQuantities: [] };
   if (type === 'suitEnergies') return { type: 'suitEnergies', suitEnergies: [] };
   return { type: 'cardEmotions', cardEmotions: [] };
@@ -1123,6 +1198,7 @@ function renderOutputsSection(
             output.input.type,
             [
               { value: 'default', label: 'default' },
+              { value: 'input', label: 'input (placed cards)' },
               { value: 'suitQuantities', label: 'suitQuantities' },
               { value: 'suitEnergies', label: 'suitEnergies' },
               { value: 'cardEmotions', label: 'cardEmotions' },
@@ -1175,22 +1251,29 @@ function renderOutputsSection(
     } else if (output.input.type === 'cardEmotions') {
       block.append(
         el('h3', { text: 'Card emotions' }),
-        renderChipList(output.input.cardEmotions, cardAliases, (next) => {
+        renderSearchableCardPicker(output.input.cardEmotions, cardAliases, (next) => {
           setOutput({ input: { type: 'cardEmotions', cardEmotions: next } });
-          rerender();
+        })
+      );
+    } else if (output.input.type === 'input') {
+      block.append(
+        el('div', {
+          className: 'meta',
+          text: 'Grants the same cards placed on this event during Sentir.',
         })
       );
     }
 
-    block.append(
-      el('h3', { text: 'Output emotions' }),
-      renderChipList(emotions, cardAliases, (next) => {
-        setOutput({
-          outputEmotions: next.length === 1 ? next[0] : next,
-        });
-        rerender();
-      })
-    );
+    if (output.input.type !== 'input') {
+      block.append(
+        el('h3', { text: 'Output emotions' }),
+        renderSearchableCardPicker(emotions, cardAliases, (next) => {
+          setOutput({
+            outputEmotions: next.length === 1 ? next[0] : next,
+          });
+        })
+      );
+    }
 
     section.append(block);
   });
@@ -1597,7 +1680,7 @@ function renderBrowse(
   );
 }
 
-function renderLimitedPersonalityChips(
+function renderPersonalityChips(
   values: string[],
   options: string[],
   onChange: (next: string[]) => void
@@ -1617,23 +1700,21 @@ function renderLimitedPersonalityChips(
       )
     );
   });
-  if (values.length < 2) {
-    wrap.append(
-      selectInput(
-        '',
-        [
-          { value: '', label: '+ add…' },
-          ...options
-            .filter((o) => !values.includes(o))
-            .map((a) => ({ value: a, label: a })),
-        ],
-        (v) => {
-          if (!v) return;
-          onChange([...values, v].slice(0, 2));
-        }
-      )
-    );
-  }
+  wrap.append(
+    selectInput(
+      '',
+      [
+        { value: '', label: '+ add…' },
+        ...options
+          .filter((o) => !values.includes(o))
+          .map((a) => ({ value: a, label: a })),
+      ],
+      (v) => {
+        if (!v) return;
+        onChange([...values, v]);
+      }
+    )
+  );
   return wrap;
 }
 
@@ -1677,9 +1758,11 @@ function renderEventForm(
     )
   );
 
-  const baseForm = el(
-    'div',
-    { className: 'form-grid' },
+  const panel = el('div');
+  panel.append(toolbar, errorsBox);
+
+  const baseSection = el('div', { className: 'form-grid' });
+  baseSection.append(
     field(
       'ID',
       numberInput(event.id, (v) =>
@@ -1739,19 +1822,11 @@ function renderEventForm(
     )
   );
 
-  const panel = el('div');
-  panel.append(
-    toolbar,
-    errorsBox,
-    el('h3', { text: 'Base fields' }),
-    baseForm
-  );
-
   if (event.isBase) {
-    panel.append(
+    baseSection.append(
       field(
         'Personalities (seed pack)',
-        renderLimitedPersonalityChips(
+        renderPersonalityChips(
           [...seed.personalities],
           personalityIds,
           (next) => {
@@ -1782,6 +1857,8 @@ function renderEventForm(
     );
   }
 
+  panel.append(eventAccordion('base', 'Base fields', baseSection));
+
   const liveSeed = ctx.getSeeds().seeds[loc.seedIndex];
   const liveEvent = liveSeed?.events[loc.eventIndex];
   if (!liveSeed || !liveEvent) {
@@ -1789,40 +1866,56 @@ function renderEventForm(
   }
 
   panel.append(
-    renderModifiersSection(
-      liveEvent,
-      loc.seedIndex,
-      loc.eventIndex,
-      ctx,
-      cardAliases,
-      rerender
+    eventAccordion(
+      'modifiers',
+      'Modifiers',
+      renderModifiersSection(
+        liveEvent,
+        loc.seedIndex,
+        loc.eventIndex,
+        ctx,
+        cardAliases,
+        rerender
+      )
     ),
-    renderDealBreakersSection(
-      liveEvent,
-      loc.seedIndex,
-      loc.eventIndex,
-      ctx,
-      cardAliases,
-      rerender
+    eventAccordion(
+      'deal-breakers',
+      'Deal breakers',
+      renderDealBreakersSection(
+        liveEvent,
+        loc.seedIndex,
+        loc.eventIndex,
+        ctx,
+        cardAliases,
+        rerender
+      )
     ),
-    renderResultsSection(
-      liveEvent,
-      loc.seedIndex,
-      loc.eventIndex,
-      ctx,
-      cardAliases,
-      personalityIds,
-      liveSeed,
-      (liveEvent.dealBreakers ?? []).map((d) => d.alias),
-      rerender
+    eventAccordion(
+      'results',
+      'Results',
+      renderResultsSection(
+        liveEvent,
+        loc.seedIndex,
+        loc.eventIndex,
+        ctx,
+        cardAliases,
+        personalityIds,
+        liveSeed,
+        (liveEvent.dealBreakers ?? []).map((d) => d.alias),
+        rerender
+      )
     ),
-    renderOutputsSection(
-      liveEvent,
-      loc.seedIndex,
-      loc.eventIndex,
-      ctx,
-      cardAliases,
-      rerender
+    eventAccordion(
+      'outputs',
+      'Outputs',
+      renderOutputsSection(
+        liveEvent,
+        loc.seedIndex,
+        loc.eventIndex,
+        ctx,
+        cardAliases,
+        rerender
+      )
     )
   );
 
@@ -1895,4 +1988,6 @@ export function resetEventsView(): void {
   view = { kind: 'browse' };
   browseMode = 'list';
   personalityFilter = [];
+  openEventAccordions.clear();
+  openEventAccordions.add('base');
 }
