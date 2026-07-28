@@ -420,6 +420,23 @@ body {
   margin-right: 4px;
 }
 
+.filter-search {
+  min-width: 200px;
+  flex: 1 1 180px;
+  max-width: 320px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.filter-search:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 .mode-toggle {
   display: inline-flex;
   gap: 4px;

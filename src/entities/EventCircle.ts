@@ -183,6 +183,7 @@ export class EventCircle extends Phaser.GameObjects.Container {
     const energy = resolveModifiedCardEnergy(card, this.eventData.modifiers);
 
     this.eventData.placedCardAliases.push(alias);
+    this.eventData.thisTurnPlacedCardAliases.push(alias);
     this.eventData.progress += energy;
     this.eventData.cardsPlacedThisTurn += 1;
     this.refreshSlotDots();
@@ -192,14 +193,17 @@ export class EventCircle extends Phaser.GameObjects.Container {
 
   /** Removes a this-turn card by index in placedCardAliases. History cards cannot be removed. */
   removeCardAt(index: number): boolean {
-    const { placedCardAliases, cardsPlacedThisTurn } = this.eventData;
+    const { placedCardAliases, cardsPlacedThisTurn, thisTurnPlacedCardAliases } =
+      this.eventData;
     const historyCount = placedCardAliases.length - cardsPlacedThisTurn;
 
     if (index < historyCount || index >= placedCardAliases.length) {
       return false;
     }
 
+    const turnIndex = index - historyCount;
     const [alias] = placedCardAliases.splice(index, 1);
+    thisTurnPlacedCardAliases.splice(turnIndex, 1);
     const card = getCardByAlias(alias);
     const energy = resolveModifiedCardEnergy(card, this.eventData.modifiers);
 
@@ -216,6 +220,7 @@ export class EventCircle extends Phaser.GameObjects.Container {
 
   resetTurnLimit(): void {
     this.eventData.cardsPlacedThisTurn = 0;
+    this.eventData.thisTurnPlacedCardAliases = [];
     this.refreshSlotDots();
     this.updateVisualState();
   }

@@ -53,6 +53,7 @@ let view: View = { kind: 'browse' };
 let browseMode: BrowseMode = 'list';
 /** Selected personality filter ids. Empty = show all. Use "basic" for empty-personality seeds. */
 let personalityFilter: string[] = [];
+let eventNameFilter = '';
 /** Keeps event form accordions open across re-renders. */
 const openEventAccordions = new Set<string>(['base']);
 
@@ -139,14 +140,28 @@ interface FlatEventRow {
   event: GameEventDefinition;
 }
 
+function eventMatchesNameFilter(
+  event: GameEventDefinition,
+  query: string
+): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return (
+    event.label.toLowerCase().includes(q) ||
+    String(event.id).includes(q)
+  );
+}
+
 function collectFlatEvents(
   file: EventSeedsFile,
-  filter: string[]
+  filter: string[],
+  nameQuery = eventNameFilter
 ): FlatEventRow[] {
   const rows: FlatEventRow[] = [];
   file.seeds.forEach((seed, seedIndex) => {
     if (!seedMatchesFilter(seed, filter)) return;
     seed.events.forEach((event, eventIndex) => {
+      if (!eventMatchesNameFilter(event, nameQuery)) return;
       rows.push({ seedIndex, eventIndex, seed, event });
     });
   });
@@ -1335,7 +1350,8 @@ function renderBreadcrumb(
 
 function renderFilterBar(
   ctx: EventsEditorContext,
-  rerender: () => void
+  rerender: () => void,
+  onNameFilterChange?: () => void
 ): HTMLElement {
   const personalities = ctx.getPersonalities();
   const wrap = el('div', { className: 'filter-bar' });
@@ -1376,6 +1392,32 @@ function renderFilterBar(
       )
     );
   }
+
+  const search = el('input', {
+    type: 'search',
+    placeholder: 'Search by name or id…',
+    className: 'filter-search',
+    value: eventNameFilter,
+  }) as HTMLInputElement;
+
+  const clearSearchBtn = button(
+    'Clear search',
+    () => {
+      eventNameFilter = '';
+      search.value = '';
+      clearSearchBtn.style.display = 'none';
+      onNameFilterChange?.();
+    },
+    'btn small'
+  );
+  clearSearchBtn.style.display = eventNameFilter.trim() ? '' : 'none';
+
+  search.addEventListener('input', () => {
+    eventNameFilter = search.value;
+    clearSearchBtn.style.display = search.value.trim() ? '' : 'none';
+    onNameFilterChange?.();
+  });
+  wrap.append(search, clearSearchBtn);
 
   return wrap;
 }
@@ -1658,6 +1700,22 @@ function renderFlatList(
   return list;
 }
 
+function refreshBrowseList(
+  host: HTMLElement,
+  ctx: EventsEditorContext,
+  rerender: () => void
+): void {
+  if (browseMode === 'tree') {
+    disposeEventsTreeFlows();
+  }
+  clear(host);
+  host.append(
+    browseMode === 'list'
+      ? renderFlatList(ctx, rerender)
+      : renderTreeView(ctx, rerender)
+  );
+}
+
 function renderBrowse(
   root: HTMLElement,
   ctx: EventsEditorContext,
@@ -1693,17 +1751,22 @@ function renderBrowse(
     )
   );
 
+  const listHost = el('div', { className: 'events-list-host' });
+  const refreshList = () => refreshBrowseList(listHost, ctx, rerender);
+
   root.append(
     el(
       'div',
       { className: 'panel' },
       el('h2', { text: 'Events' }),
       toolbar,
-      renderFilterBar(ctx, rerender),
+      renderFilterBar(ctx, rerender, refreshList),
       errorsBox,
-      browseMode === 'list' ? renderFlatList(ctx, rerender) : renderTreeView(ctx, rerender)
+      listHost
     )
   );
+
+  refreshList();
 }
 
 function renderPersonalityChips(
@@ -2014,6 +2077,7 @@ export function resetEventsView(): void {
   view = { kind: 'browse' };
   browseMode = 'list';
   personalityFilter = [];
+  eventNameFilter = '';
   openEventAccordions.clear();
   openEventAccordions.add('base');
 }
