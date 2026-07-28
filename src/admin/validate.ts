@@ -3,6 +3,8 @@ import {
   EventAction,
   EventSeedsFile,
   PersonalityEntry,
+  SOUND_ACTION_IDS,
+  SoundsCatalog,
 } from './types';
 
 export function collectCardAliases(catalog: EmotionsCatalog): Set<string> {
@@ -255,6 +257,28 @@ export function validateEventSeeds(
       });
     });
   });
+
+  return errors;
+}
+
+export function validateSoundsCatalog(catalog: SoundsCatalog): string[] {
+  const errors: string[] = [];
+
+  for (const id of SOUND_ACTION_IDS) {
+    const entry = catalog[id];
+    if (!entry) {
+      errors.push(`${id}: missing entry`);
+      continue;
+    }
+    if (entry.path != null && typeof entry.path !== 'string') {
+      errors.push(`${id}.path: must be a string or null`);
+    }
+    if (typeof entry.volume !== 'number' || Number.isNaN(entry.volume)) {
+      errors.push(`${id}.volume: must be a number`);
+    } else if (entry.volume < 0 || entry.volume > 1) {
+      errors.push(`${id}.volume: must be between 0 and 1`);
+    }
+  }
 
   return errors;
 }

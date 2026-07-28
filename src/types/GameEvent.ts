@@ -98,6 +98,7 @@ export interface GameEventDefinition {
   /** Stable template id (used by results / catalog lookups). */
   id: number;
   label: string;
+  description: string;
   energyAmount: number;
   /** When true, energy progress stays hidden (gray bar with ?). */
   energyAmountSecret: boolean;

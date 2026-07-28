@@ -10,6 +10,7 @@ import {
   openModal,
   selectInput,
   textInput,
+  textareaInput,
 } from '../dom';
 import {
   ALL_CARD_SUITS,
@@ -97,6 +98,7 @@ function cloneEvent(base?: Partial<GameEventDefinition>): GameEventDefinition {
   return {
     id: base?.id ?? Date.now() % 100000,
     label: base?.label ?? 'New event',
+    description: base?.description ?? '',
     energyAmount: base?.energyAmount ?? 30,
     energyAmountSecret: base?.energyAmountSecret ?? false,
     cardsPerTurn: base?.cardsPerTurn ?? 1,
@@ -1863,6 +1865,15 @@ function renderEventForm(
       textInput(event.label, (v) =>
         updateEvent(ctx, seedIndex, eventIndex, { label: v })
       )
+    ),
+    field(
+      'Description',
+      textareaInput(
+        event.description ?? '',
+        (v) => updateEvent(ctx, seedIndex, eventIndex, { description: v }),
+        { rows: '4' }
+      ),
+      true
     ),
     field(
       'Energy amount',

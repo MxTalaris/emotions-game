@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { getPersonalityById } from '../data/personalities';
 import { PersonalityId } from '../types';
+import { domText } from '../utils/domUi';
 
 const CLOUD_COLORS: Record<string, number> = {
   warm: 0xffab91,
@@ -43,15 +44,21 @@ export class PersonalityCloud extends Phaser.GameObjects.Container {
     graphics.lineStyle(2, 0xffffff, 0.35);
     graphics.strokeEllipse(0, -6, 110, 68);
 
-    const nameText = scene.add.text(0, -4, label, {
-      fontSize: '15px',
-      color: '#1a1a2e',
-      fontStyle: 'bold',
-      align: 'center',
-    });
-    nameText.setOrigin(0.5);
+    const nameText = domText(
+      scene,
+      label,
+      {
+        fontSize: '15px',
+        color: '#1a1a2e',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        width: '110px',
+        wordBreak: 'break-word',
+      },
+      { x: 0, y: -4, originX: 0.5, originY: 0.5 }
+    );
 
-    this.add([graphics, nameText]);
+    this.add([graphics, nameText.dom]);
     this.setSize(120, 72);
     this.setDepth(80);
     scene.add.existing(this);

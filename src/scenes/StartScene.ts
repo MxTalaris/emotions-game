@@ -7,6 +7,9 @@ import {
   startGameSession,
 } from '../systems/gameSession';
 import { PersonalityId } from '../types';
+import { css, domText, DomTextHandle, GAME_FONT, stopPointerBubble } from '../utils/domUi';
+
+const SCREEN_TEXT_WIDTH = GAME_WIDTH - 48;
 
 const CLOUD_SCALE = 0.8;
 const CLOUD_SPACING_X = 130;
@@ -17,7 +20,7 @@ const MAX_SELECTED = 2;
 export class StartScene extends Phaser.Scene {
   private selectedPersonalities: PersonalityId[] = [];
   private selectionRings = new Map<PersonalityId, Phaser.GameObjects.Ellipse>();
-  private seedHintText!: Phaser.GameObjects.Text;
+  private seedHintText!: DomTextHandle;
 
   constructor() {
     super({ key: 'StartScene' });
@@ -31,56 +34,85 @@ export class StartScene extends Phaser.Scene {
       .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x1a1a2e)
       .setDepth(0);
 
-    this.add
-      .text(GAME_WIDTH / 2, 70, 'Emotional DAMAGE', {
-        fontSize: '36px',
-        color: '#ffffff',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5);
+    this.addFixedText(GAME_WIDTH / 2, 70, 'Emotional DAMAGE', {
+      fontSize: '36px',
+      color: '#ffffff',
+      fontWeight: 'bold',
+    });
 
-    this.add
-      .text(GAME_WIDTH / 2, 110, 'Sinta, escolha, descubra quem você é.', {
-        fontSize: '16px',
-        color: '#9fa8da',
-      })
-      .setOrigin(0.5);
+    this.addFixedText(GAME_WIDTH / 2, 110, 'Sinta, escolha, descubra quem você é.', {
+      fontSize: '16px',
+      color: '#9fa8da',
+    });
 
-    this.add
-      .text(GAME_WIDTH / 2, 145, 'Selecione até 2 personalidades para a run', {
-        fontSize: '13px',
-        color: '#7986cb',
-      })
-      .setOrigin(0.5);
+    this.addFixedText(GAME_WIDTH / 2, 145, 'Selecione até 2 personalidades para a run', {
+      fontSize: '13px',
+      color: '#7986cb',
+    });
 
-    this.seedHintText = this.add
-      .text(GAME_WIDTH / 2, 170, '', {
-        fontSize: '12px',
-        color: '#a5d6a7',
-      })
-      .setOrigin(0.5);
+    this.seedHintText = this.addFixedText(GAME_WIDTH / 2, 170, '', {
+      fontSize: '12px',
+      color: '#a5d6a7',
+    });
 
     this.createPlayButton(GAME_WIDTH / 2, 215);
     this.createPersonalityGallery(280);
     this.refreshSeedHint();
   }
 
+  private addFixedText(
+    x: number,
+    y: number,
+    text: string,
+    style: Record<string, string | number>
+  ): DomTextHandle {
+    return domText(
+      this,
+      text,
+      {
+        width: `${SCREEN_TEXT_WIDTH}px`,
+        textAlign: 'center',
+        ...style,
+      },
+      {
+        x,
+        y,
+        originX: 0.5,
+        originY: 0.5,
+        scrollFactor: 0,
+        depth: 10,
+      }
+    );
+  }
+
   private createPlayButton(x: number, y: number): void {
-    const background = this.add.rectangle(x, y, 160, 48, 0x5c6bc0);
-    background.setStrokeStyle(2, 0x7986cb);
-    background.setInteractive({ useHandCursor: true });
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = 'JOGAR';
+    button.style.cssText = css({
+      width: '160px',
+      height: '48px',
+      fontFamily: GAME_FONT,
+      fontSize: '18px',
+      fontWeight: 'bold',
+      color: '#ffffff',
+      background: '#5c6bc0',
+      border: '2px solid #7986cb',
+      cursor: 'pointer',
+      padding: '0',
+    });
+    stopPointerBubble(button);
 
-    this.add
-      .text(x, y, 'JOGAR', {
-        fontSize: '18px',
-        color: '#ffffff',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5);
+    const dom = this.add.dom(x, y, button);
+    dom.setOrigin(0.5).setScrollFactor(0).setDepth(10);
 
-    background.on('pointerover', () => background.setFillStyle(0x7986cb));
-    background.on('pointerout', () => background.setFillStyle(0x5c6bc0));
-    background.on('pointerdown', () => {
+    button.addEventListener('mouseenter', () => {
+      button.style.background = '#7986cb';
+    });
+    button.addEventListener('mouseleave', () => {
+      button.style.background = '#5c6bc0';
+    });
+    button.addEventListener('click', () => {
       const session = startGameSession(this.selectedPersonalities);
       this.scene.start('GameScene', {
         seedId: session.seedId,
@@ -92,26 +124,22 @@ export class StartScene extends Phaser.Scene {
   private createPersonalityGallery(topY: number): void {
     const personalities = loadPersonalityCollection();
 
-    this.add
-      .text(GAME_WIDTH / 2, topY, 'SUAS PERSONALIDADES', {
-        fontSize: '14px',
-        color: '#7986cb',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5);
+    this.addFixedText(GAME_WIDTH / 2, topY, 'SUAS PERSONALIDADES', {
+      fontSize: '14px',
+      color: '#7986cb',
+      fontWeight: 'bold',
+    });
 
     if (personalities.length === 0) {
-      this.add
-        .text(
-          GAME_WIDTH / 2,
-          topY + 40,
-          'Nenhuma descoberta ainda. Jogue a seed basic para começar.',
-          {
-            fontSize: '14px',
-            color: '#5c6bc0',
-          }
-        )
-        .setOrigin(0.5);
+      this.addFixedText(
+        GAME_WIDTH / 2,
+        topY + 40,
+        'Nenhuma descoberta ainda. Jogue a seed basic para começar.',
+        {
+          fontSize: '14px',
+          color: '#5c6bc0',
+        }
+      );
       return;
     }
 

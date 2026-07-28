@@ -96,6 +96,7 @@ export interface EventModifiers {
 export interface GameEventDefinition {
   id: number;
   label: string;
+  description: string;
   energyAmount: number;
   energyAmountSecret: boolean;
   cardsPerTurn: number;
@@ -137,3 +138,43 @@ export const ALL_CARD_SUITS: CardSuit[] = [
   'disgust',
   'apathy',
 ];
+
+export const SOUND_SFX_IDS = [
+  'feelClick',
+  'cardDragStart',
+  'cardDropEvent',
+  'eventCompleteSpawn',
+] as const;
+
+export const SOUND_BGM_ID = 'backgroundMusic' as const;
+
+export const SOUND_ACTION_IDS = [...SOUND_SFX_IDS, SOUND_BGM_ID] as const;
+
+export type SoundSfxId = (typeof SOUND_SFX_IDS)[number];
+export type SoundActionId = (typeof SOUND_ACTION_IDS)[number];
+
+export interface SoundActionConfig {
+  /** Public URL path, e.g. /storage/audio/feelClick-….mp3. Null = silent. */
+  path: string | null;
+  volume: number;
+}
+
+export type SoundsCatalog = Record<SoundActionId, SoundActionConfig>;
+
+export const SOUND_ACTION_LABELS: Record<SoundActionId, string> = {
+  feelClick: 'Clique do Sentir',
+  cardDragStart: 'Clique para arrastar carta',
+  cardDropEvent: 'Drop da carta no evento',
+  eventCompleteSpawn: 'Evento concluído gerando novo evento',
+  backgroundMusic: 'Som de fundo (BGM)',
+};
+
+export function createEmptySoundsCatalog(): SoundsCatalog {
+  return {
+    feelClick: { path: null, volume: 0.6 },
+    cardDragStart: { path: null, volume: 0.45 },
+    cardDropEvent: { path: null, volume: 0.5 },
+    eventCompleteSpawn: { path: null, volume: 0.55 },
+    backgroundMusic: { path: null, volume: 0.35 },
+  };
+}

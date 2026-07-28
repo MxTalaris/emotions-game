@@ -92,3 +92,9 @@ export const MUSIC_BUTTON = {
   y: 36,
   size: 44,
 };
+
+/** Background music (path/volume come from sounds-catalog). */
+export const BGM = {
+  key: 'bgm',
+  loop: true,
+};

@@ -23,6 +23,8 @@ import {
   findEventsWithFeelingsThisTurn,
 } from '../systems/processFeelings';
 import { TurnManager } from '../systems/TurnManager';
+import { SoundEffects } from '../systems/SoundEffects';
+import { getBackgroundMusicConfig } from '../data/sounds';
 import {
   CardAlias,
   createCardInstance,
@@ -42,6 +44,7 @@ import {
   HAND_CARD_SCALE,
   HAND_WHEEL,
   HAND_Y,
+  BGM,
   MUSIC_BUTTON,
   TREE_ZOOM,
 } from '../config/gameConfig';
@@ -53,6 +56,7 @@ import {
   Point,
   strokeCubicProgress,
 } from '../utils/gardenGraphics';
+import { css, domText, DomTextHandle, GAME_FONT, stopPointerBubble } from '../utils/domUi';
 
 type BranchCurve = [Point, Point, Point, Point];
 
@@ -66,7 +70,7 @@ type ViewportGesture =
       startY: number;
       originScrollX: number;
       originScrollY: number;
-      flowerTap: EventCircle | null;
+      eventTap: EventCircle | null;
     }
   | {
       type: 'hand-pan';
@@ -103,13 +107,14 @@ export class GameScene extends Phaser.Scene {
   private viewportGesture: ViewportGesture | null = null;
   private feelButton!: FeelButton;
   private musicButton!: MusicToggleButton;
-  private turnText!: Phaser.GameObjects.Text;
+  private turnText!: DomTextHandle;
   private bgm: Phaser.Sound.BaseSound | null = null;
   private musicEnabled = false;
   private personalityClouds: PersonalityCloud[] = [];
   private endGameOverlay: Phaser.GameObjects.Container | null = null;
   private flowerDetailPopup: FlowerDetailPopup | null = null;
   private cardPreviewPopup: CardPreviewPopup | null = null;
+  private soundEffects!: SoundEffects;
   private launchSeedId: string | null = null;
   private launchSelectedPersonalities: PersonalityId[] = [];
 
@@ -128,7 +133,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload(): void {
-    this.load.audio('bgm-chill', 'assets/audio/bgm-chill.ogg');
+    const bgm = getBackgroundMusicConfig();
+    this.load.audio(BGM.key, bgm.path);
+    this.soundEffects = new SoundEffects(this);
+    this.soundEffects.preload();
 
     const seen = new Set<string>();
     for (const definition of [...cards, APATHY_CARD]) {
@@ -192,10 +200,12 @@ export class GameScene extends Phaser.Scene {
 
   private setupBackgroundMusic(): void {
     if (this.bgm) return;
+    if (!this.cache.audio.exists(BGM.key)) return;
 
-    this.bgm = this.sound.add('bgm-chill', {
-      loop: true,
-      volume: 0.35,
+    const { volume } = getBackgroundMusicConfig();
+    this.bgm = this.sound.add(BGM.key, {
+      loop: BGM.loop,
+      volume,
     });
 
     const tryPlay = () => {
@@ -271,6 +281,7 @@ export class GameScene extends Phaser.Scene {
 
     this.ensureEventsVisible(instances);
     this.updateFeelButtonState();
+    this.soundEffects.play('eventCompleteSpawn');
   }
 
   private growBranches(curves: BranchCurve[], onComplete: () => void): void {
@@ -500,6 +511,8 @@ export class GameScene extends Phaser.Scene {
         deltaX: number,
         deltaY: number
       ) => {
+        if (this.flowerDetailPopup) return;
+
         if (this.isPointerOverHand(pointer)) {
           if (this.getMaxHandScroll() <= 0) return;
           const delta = Math.abs(deltaX) > Math.abs(deltaY) ? deltaX : deltaY;
@@ -577,8 +590,7 @@ export class GameScene extends Phaser.Scene {
       startY: pointer.y,
       originScrollX: this.treeScrollX,
       originScrollY: this.treeScrollY,
-      flowerTap:
-        eventAtPointer?.eventData.completed === true ? eventAtPointer : null,
+      eventTap: eventAtPointer,
     };
   }
 
@@ -682,7 +694,7 @@ export class GameScene extends Phaser.Scene {
           startY: next.y,
           originScrollX: this.treeScrollX,
           originScrollY: this.treeScrollY,
-          flowerTap: null,
+          eventTap: null,
         };
         return;
       }
@@ -692,13 +704,13 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (gesture.pointerId === pointer.id) {
-      if (gesture.type === 'tree-pan' && gesture.flowerTap) {
+      if (gesture.type === 'tree-pan' && gesture.eventTap) {
         const moved = Math.hypot(
           pointer.x - gesture.startX,
           pointer.y - gesture.startY
         );
         if (moved < 10) {
-          this.showFlowerDetail(gesture.flowerTap);
+          this.showEventDetail(gesture.eventTap);
         }
       }
       this.viewportGesture = null;
@@ -712,7 +724,11 @@ export class GameScene extends Phaser.Scene {
       width: FEEL_BUTTON.width,
       height: FEEL_BUTTON.height,
       label: 'Sentir',
-      onClick: () => this.processFeelings(),
+      onClick: () => {
+        if (!this.canPressFeel()) return;
+        this.soundEffects.play('feelClick');
+        this.processFeelings();
+      },
     });
     this.feelButton.setDepth(200);
   }
@@ -806,12 +822,17 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createTurnDisplay(): void {
-    this.turnText = this.add.text(16, 16, this.getTurnLabel(), {
-      fontSize: '16px',
-      color: '#3d3428',
-      fontStyle: 'bold',
-    });
-    this.turnText.setDepth(200);
+    this.turnText = domText(
+      this,
+      this.getTurnLabel(),
+      {
+        fontSize: '16px',
+        color: '#3d3428',
+        fontWeight: 'bold',
+        textAlign: 'left',
+      },
+      { x: 16, y: 16, originX: 0, originY: 0, scrollFactor: 0, depth: 200 }
+    );
   }
 
   private getTurnLabel(): string {
@@ -845,6 +866,7 @@ export class GameScene extends Phaser.Scene {
         if (card.isCommitted) return;
 
         this.draggingCard = card;
+        this.soundEffects.play('cardDragStart');
 
         if (card.canRecall) {
           this.recallCardFromEvent(card, pointer);
@@ -882,6 +904,7 @@ export class GameScene extends Phaser.Scene {
           this.placeCardOnEvent(card, targetEvent);
           this.removeFromHand(card);
           this.updateFeelButtonState();
+          this.soundEffects.play('cardDropEvent');
         } else {
           card.returnToHand();
         }
@@ -973,8 +996,8 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private showFlowerDetail(event: EventCircle): void {
-    if (this.flowerDetailPopup || !event.eventData.completed) return;
+  private showEventDetail(event: EventCircle): void {
+    if (this.flowerDetailPopup) return;
 
     this.flowerDetailPopup = new FlowerDetailPopup(this, event.eventData, () => {
       this.flowerDetailPopup = null;
@@ -1230,56 +1253,79 @@ export class GameScene extends Phaser.Scene {
       .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.65)
       .setInteractive();
 
-    const panel = this.add.rectangle(
-      GAME_WIDTH / 2,
-      GAME_HEIGHT / 2,
-      340,
-      200,
-      0x2d3561
-    );
-    panel.setStrokeStyle(3, 0x66bb6a);
+    const panelW = 340;
+    const panelH = 200;
+    const panelLeft = GAME_WIDTH / 2 - panelW / 2;
+    const panelTop = GAME_HEIGHT / 2 - panelH / 2;
 
-    const title = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 48, 'Sucesso!', {
-        fontSize: '28px',
-        color: '#66bb6a',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5);
+    const panel = document.createElement('div');
+    panel.style.cssText = css({
+      width: `${panelW}px`,
+      height: `${panelH}px`,
+      fontFamily: GAME_FONT,
+      background: '#2d3561',
+      border: '3px solid #66bb6a',
+      boxSizing: 'border-box',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '12px',
+      padding: '16px',
+    });
+    stopPointerBubble(panel);
 
-    const subtitle = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 8, 'Você descobriu uma personalidade.', {
-        fontSize: '14px',
-        color: '#c5cae9',
-        align: 'center',
-      })
-      .setOrigin(0.5);
+    const title = document.createElement('h2');
+    title.textContent = 'Sucesso!';
+    title.style.cssText = css({
+      margin: '0',
+      fontSize: '28px',
+      color: '#66bb6a',
+      fontWeight: 'bold',
+      textAlign: 'center',
+    });
 
-    const buttonBg = this.add.rectangle(
-      GAME_WIDTH / 2,
-      GAME_HEIGHT / 2 + 52,
-      120,
-      44,
-      0x43a047
-    );
-    buttonBg.setStrokeStyle(2, 0x66bb6a);
-    buttonBg.setInteractive({ useHandCursor: true });
+    const subtitle = document.createElement('p');
+    subtitle.textContent = 'Você descobriu uma personalidade.';
+    subtitle.style.cssText = css({
+      margin: '0',
+      fontSize: '14px',
+      color: '#c5cae9',
+      textAlign: 'center',
+    });
 
-    const buttonLabel = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 52, 'YAY', {
-        fontSize: '18px',
-        color: '#ffffff',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5);
-
-    buttonBg.on('pointerover', () => buttonBg.setFillStyle(0x66bb6a));
-    buttonBg.on('pointerout', () => buttonBg.setFillStyle(0x43a047));
-    buttonBg.on('pointerdown', () => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = 'YAY';
+    button.style.cssText = css({
+      width: '120px',
+      height: '44px',
+      fontFamily: GAME_FONT,
+      fontSize: '18px',
+      fontWeight: 'bold',
+      color: '#ffffff',
+      background: '#43a047',
+      border: '2px solid #66bb6a',
+      cursor: 'pointer',
+      padding: '0',
+    });
+    stopPointerBubble(button);
+    button.addEventListener('mouseenter', () => {
+      button.style.background = '#66bb6a';
+    });
+    button.addEventListener('mouseleave', () => {
+      button.style.background = '#43a047';
+    });
+    button.addEventListener('click', () => {
       this.scene.start('StartScene');
     });
 
-    overlay.add([dim, panel, title, subtitle, buttonBg, buttonLabel]);
+    panel.append(title, subtitle, button);
+
+    const panelDom = this.add.dom(panelLeft, panelTop, panel);
+    panelDom.setOrigin(0, 0).setScrollFactor(0);
+
+    overlay.add([dim, panelDom]);
     this.endGameOverlay = overlay;
 
     overlay.setAlpha(0);

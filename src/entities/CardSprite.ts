@@ -6,6 +6,7 @@ import {
 } from '../config/gameConfig';
 import { getSuitColor } from '../data/cards';
 import { CardInstance } from '../types';
+import { domBoxLabel, domText, DomTextHandle } from '../utils/domUi';
 
 export function cardTextureKey(alias: string): string {
   return `card-img-${alias}`;
@@ -14,7 +15,7 @@ export function cardTextureKey(alias: string): string {
 export class CardSprite extends Phaser.GameObjects.Container {
   readonly cardData: CardInstance;
   private background: Phaser.GameObjects.GameObject;
-  private label: Phaser.GameObjects.Text;
+  private label: DomTextHandle;
   private homeX: number;
   private homeY: number;
   private homeRotation = 0;
@@ -60,22 +61,35 @@ export class CardSprite extends Phaser.GameObjects.Container {
       children.push(rect);
     }
 
-    this.label = scene.add.text(0, -12, cardData.name, {
-      fontSize: '14px',
-      color: '#ffffff',
-      align: 'center',
-      wordWrap: { width: CARD_WIDTH - 10 },
-    });
-    this.label.setOrigin(0.5);
+    const cardTextWidth = CARD_WIDTH - 10;
 
-    const energyLabel = scene.add.text(0, 18, `${cardData.energyAmount}`, {
-      fontSize: '16px',
-      color: '#ffffff',
-      align: 'center',
-    });
-    energyLabel.setOrigin(0.5);
+    this.label = domText(
+      scene,
+      cardData.name,
+      {
+        fontSize: '14px',
+        color: '#ffffff',
+        textAlign: 'center',
+        width: `${cardTextWidth}px`,
+        wordBreak: 'break-word',
+      },
+      { x: 0, y: -12, originX: 0.5, originY: 0.5 }
+    );
 
-    this.add([...children, this.label, energyLabel]);
+    const energyLabel = domBoxLabel(
+      scene,
+      `${cardData.energyAmount}`,
+      cardTextWidth,
+      22,
+      {
+        fontSize: '16px',
+        color: '#ffffff',
+        fontWeight: 'bold',
+      },
+      { x: 0, y: 18 }
+    );
+
+    this.add([...children, this.label.dom, energyLabel.dom]);
     this.setSize(CARD_WIDTH, CARD_HEIGHT);
     this.setInteractive({ draggable: true, useHandCursor: true });
     this.setDepth(40);

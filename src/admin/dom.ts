@@ -56,6 +56,17 @@ export function textInput(
   return input;
 }
 
+export function textareaInput(
+  value: string,
+  onChange: (v: string) => void,
+  attrs: Record<string, string> = {}
+): HTMLTextAreaElement {
+  const input = el('textarea', { ...attrs }) as HTMLTextAreaElement;
+  input.value = value;
+  input.addEventListener('input', () => onChange(input.value));
+  return input;
+}
+
 export function numberInput(
   value: number,
   onChange: (v: number) => void,
