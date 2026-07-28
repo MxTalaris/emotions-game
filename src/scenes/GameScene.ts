@@ -23,6 +23,8 @@ import {
   findEventsWithFeelingsThisTurn,
 } from '../systems/processFeelings';
 import { TurnManager } from '../systems/TurnManager';
+import { SoundEffects } from '../systems/SoundEffects';
+import { getBackgroundMusicConfig } from '../data/sounds';
 import {
   CardAlias,
   createCardInstance,
@@ -112,6 +114,7 @@ export class GameScene extends Phaser.Scene {
   private endGameOverlay: Phaser.GameObjects.Container | null = null;
   private flowerDetailPopup: FlowerDetailPopup | null = null;
   private cardPreviewPopup: CardPreviewPopup | null = null;
+  private soundEffects!: SoundEffects;
   private launchSeedId: string | null = null;
   private launchSelectedPersonalities: PersonalityId[] = [];
 
@@ -130,7 +133,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload(): void {
-    this.load.audio(BGM.key, BGM.paths);
+    const bgm = getBackgroundMusicConfig();
+    this.load.audio(BGM.key, bgm.path);
+    this.soundEffects = new SoundEffects(this);
+    this.soundEffects.preload();
 
     const seen = new Set<string>();
     for (const definition of [...cards, APATHY_CARD]) {
@@ -194,10 +200,12 @@ export class GameScene extends Phaser.Scene {
 
   private setupBackgroundMusic(): void {
     if (this.bgm) return;
+    if (!this.cache.audio.exists(BGM.key)) return;
 
+    const { volume } = getBackgroundMusicConfig();
     this.bgm = this.sound.add(BGM.key, {
       loop: BGM.loop,
-      volume: BGM.volume,
+      volume,
     });
 
     const tryPlay = () => {
@@ -273,6 +281,7 @@ export class GameScene extends Phaser.Scene {
 
     this.ensureEventsVisible(instances);
     this.updateFeelButtonState();
+    this.soundEffects.play('eventCompleteSpawn');
   }
 
   private growBranches(curves: BranchCurve[], onComplete: () => void): void {
@@ -715,7 +724,11 @@ export class GameScene extends Phaser.Scene {
       width: FEEL_BUTTON.width,
       height: FEEL_BUTTON.height,
       label: 'Sentir',
-      onClick: () => this.processFeelings(),
+      onClick: () => {
+        if (!this.canPressFeel()) return;
+        this.soundEffects.play('feelClick');
+        this.processFeelings();
+      },
     });
     this.feelButton.setDepth(200);
   }
@@ -853,6 +866,7 @@ export class GameScene extends Phaser.Scene {
         if (card.isCommitted) return;
 
         this.draggingCard = card;
+        this.soundEffects.play('cardDragStart');
 
         if (card.canRecall) {
           this.recallCardFromEvent(card, pointer);
@@ -890,6 +904,7 @@ export class GameScene extends Phaser.Scene {
           this.placeCardOnEvent(card, targetEvent);
           this.removeFromHand(card);
           this.updateFeelButtonState();
+          this.soundEffects.play('cardDropEvent');
         } else {
           card.returnToHand();
         }

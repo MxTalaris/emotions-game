@@ -5,9 +5,11 @@ const ALLOWED = {
   'event-templates': 'event-templates.json',
   'emotions-catalog': 'emotions-catalog.json',
   'personalities-catalog': 'personalities-catalog.json',
+  'sounds-catalog': 'sounds-catalog.json',
 };
 
 const ALLOWED_IMAGE_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif']);
+const ALLOWED_AUDIO_EXT = new Set(['.mp3', '.ogg', '.wav', '.m4a']);
 
 function readRequestBody(req) {
   return new Promise((resolve, reject) => {
@@ -20,12 +22,12 @@ function readRequestBody(req) {
   });
 }
 
-function safeCardId(cardId) {
-  return String(cardId || 'card').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
+function safeId(value, fallback = 'file') {
+  return String(value || fallback).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
 }
 
 /**
- * Mounts GET/PUT /api/data/:name and POST /api/upload/card.
+ * Mounts GET/PUT /api/data/:name, POST /api/upload/card, POST /api/upload/audio.
  * Also serves /storage/* from the project storage folder.
  * @param {import('express').Application} app
  */
@@ -33,8 +35,10 @@ function mountDataApi(app) {
   const dataDir = path.join(__dirname, '..', 'src', 'data');
   const storageDir = path.join(__dirname, '..', 'storage');
   const cardsDir = path.join(storageDir, 'cards');
+  const audioDir = path.join(storageDir, 'audio');
 
   fs.mkdirSync(cardsDir, { recursive: true });
+  fs.mkdirSync(audioDir, { recursive: true });
 
   app.use('/storage', (req, res, next) => {
     const rel = decodeURIComponent(req.path).replace(/^\/+/, '');
@@ -62,6 +66,10 @@ function mountDataApi(app) {
         '.jpeg': 'image/jpeg',
         '.webp': 'image/webp',
         '.gif': 'image/gif',
+        '.mp3': 'audio/mpeg',
+        '.ogg': 'audio/ogg',
+        '.wav': 'audio/wav',
+        '.m4a': 'audio/mp4',
       };
       res.setHeader('Content-Type', types[ext] || 'application/octet-stream');
       res.setHeader('Cache-Control', 'public, max-age=3600');
@@ -118,7 +126,7 @@ function mountDataApi(app) {
   app.post('/api/upload/card', async (req, res) => {
     try {
       const body = JSON.parse((await readRequestBody(req)).toString('utf8'));
-      const cardId = safeCardId(body.cardId);
+      const cardId = safeId(body.cardId, 'card');
       const filename = String(body.filename || 'image.png');
       const ext = path.extname(filename).toLowerCase() || '.png';
       if (!ALLOWED_IMAGE_EXT.has(ext)) {
@@ -143,6 +151,47 @@ function mountDataApi(app) {
       const outPath = path.join(cardsDir, outName);
       fs.writeFileSync(outPath, buffer);
       const urlPath = `/storage/cards/${outName}`;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ ok: true, path: urlPath }));
+    } catch (err) {
+      res.statusCode = 400;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(
+        JSON.stringify({
+          error: err instanceof Error ? err.message : String(err),
+        })
+      );
+    }
+  });
+
+  app.post('/api/upload/audio', async (req, res) => {
+    try {
+      const body = JSON.parse((await readRequestBody(req)).toString('utf8'));
+      const actionId = safeId(body.actionId, 'sfx');
+      const filename = String(body.filename || 'sound.mp3');
+      const ext = path.extname(filename).toLowerCase() || '.mp3';
+      if (!ALLOWED_AUDIO_EXT.has(ext)) {
+        res.statusCode = 400;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: `Unsupported audio type: ${ext}` }));
+        return;
+      }
+      const base64 = String(body.contentBase64 || '');
+      const raw = base64.includes(',')
+        ? base64.slice(base64.indexOf(',') + 1)
+        : base64;
+      const buffer = Buffer.from(raw, 'base64');
+      if (!buffer.length) {
+        res.statusCode = 400;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Empty audio data' }));
+        return;
+      }
+
+      const outName = `${actionId}-${Date.now()}${ext}`;
+      const outPath = path.join(audioDir, outName);
+      fs.writeFileSync(outPath, buffer);
+      const urlPath = `/storage/audio/${outName}`;
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify({ ok: true, path: urlPath }));
     } catch (err) {

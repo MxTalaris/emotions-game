@@ -93,10 +93,8 @@ export const MUSIC_BUTTON = {
   size: 44,
 };
 
-/** Background music — Sirens (Ludwig Göransson, The Odyssey). */
+/** Background music (path/volume come from sounds-catalog). */
 export const BGM = {
-  key: 'bgm-sirens',
-  paths: ['assets/audio/bgm-sirens.mp3'],
-  volume: 0.35,
+  key: 'bgm',
   loop: true,
 };

@@ -8,10 +8,13 @@ import {
   resetEventsView,
 } from './editors/EventsEditor';
 import { renderPersonalitiesEditor } from './editors/PersonalitiesEditor';
+import { renderSoundsEditor } from './editors/SoundsEditor';
 import {
+  createEmptySoundsCatalog,
   EmotionsCatalog,
   EventSeedsFile,
   PersonalityEntry,
+  SoundsCatalog,
 } from './types';
 import { collectCardAliases } from './validate';
 
@@ -19,11 +22,12 @@ const styleTag = document.createElement('style');
 styleTag.textContent = styles;
 document.head.append(styleTag);
 
-type TabId = 'personalities' | 'cards' | 'events';
+type TabId = 'personalities' | 'cards' | 'events' | 'sounds';
 
 let personalities: PersonalityEntry[] = [];
 let emotionsCatalog: EmotionsCatalog = {};
 let eventSeeds: EventSeedsFile = { seeds: [] };
+let soundsCatalog: SoundsCatalog = createEmptySoundsCatalog();
 let activeTab: TabId = 'personalities';
 
 const app = document.getElementById('app');
@@ -59,7 +63,7 @@ function renderActiveTab(): void {
       setStatus,
       onChanged: () => renderActiveTab(),
     });
-  } else {
+  } else if (activeTab === 'events') {
     renderEventsEditor(contentEl, {
       getSeeds: () => eventSeeds,
       setSeeds: (next) => {
@@ -67,6 +71,15 @@ function renderActiveTab(): void {
       },
       getPersonalities: () => personalities,
       getCardAliases: () => [...collectCardAliases(emotionsCatalog)].sort(),
+      setStatus,
+      onChanged: () => renderActiveTab(),
+    });
+  } else {
+    renderSoundsEditor(contentEl, {
+      getCatalog: () => soundsCatalog,
+      setCatalog: (next) => {
+        soundsCatalog = next;
+      },
       setStatus,
       onChanged: () => renderActiveTab(),
     });
@@ -89,6 +102,7 @@ const tabButtons: HTMLButtonElement[] = (
     ['personalities', 'Personalities'],
     ['cards', 'Cards'],
     ['events', 'Events'],
+    ['sounds', 'Sounds'],
   ] as const
 ).map(([id, label]) => {
   const btn = el('button', {
@@ -111,7 +125,7 @@ app.append(
       el('h1', { text: 'Content Admin' }),
       el('div', {
         className: 'sub',
-        text: 'Edit personalities, cards, and event templates · saves to src/data/',
+        text: 'Edit personalities, cards, events, and sounds · saves to src/data/',
       })
     ),
     el(
@@ -131,14 +145,16 @@ app.append(
 async function boot(): Promise<void> {
   setStatus('Loading…');
   try {
-    const [p, cards, events] = await Promise.all([
+    const [p, cards, events, sounds] = await Promise.all([
       loadData<PersonalityEntry[]>('personalities-catalog'),
       loadData<EmotionsCatalog>('emotions-catalog'),
       loadData<EventSeedsFile>('event-templates'),
+      loadData<SoundsCatalog>('sounds-catalog'),
     ]);
     personalities = p;
     emotionsCatalog = cards;
     eventSeeds = events;
+    soundsCatalog = { ...createEmptySoundsCatalog(), ...sounds };
     setStatus('Ready');
     renderActiveTab();
   } catch (err) {

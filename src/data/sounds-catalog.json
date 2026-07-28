@@ -1,0 +1,22 @@
+{
+  "feelClick": {
+    "path": "/storage/audio/feelClick-1785252171416.mp3",
+    "volume": 0.6
+  },
+  "cardDragStart": {
+    "path": null,
+    "volume": 0.45
+  },
+  "cardDropEvent": {
+    "path": null,
+    "volume": 0.5
+  },
+  "eventCompleteSpawn": {
+    "path": null,
+    "volume": 0.55
+  },
+  "backgroundMusic": {
+    "path": null,
+    "volume": 0.35
+  }
+}
