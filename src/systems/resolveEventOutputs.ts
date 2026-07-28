@@ -4,14 +4,16 @@ import {
   CardSuit,
   EventOutput,
   GameEventInstance,
+  OUTPUT_PLACED_CARDS,
+  OutputEmotionRef,
   SuitEnergy,
   SuitQuantity,
 } from '../types';
 import { resolveModifiedCardEnergy } from './resolveModifiedCardEnergy';
 
 function normalizeOutputEmotions(
-  outputEmotions: CardAlias | CardAlias[]
-): CardAlias[] {
+  outputEmotions: OutputEmotionRef | OutputEmotionRef[]
+): OutputEmotionRef[] {
   return Array.isArray(outputEmotions) ? outputEmotions : [outputEmotions];
 }
 
@@ -25,10 +27,10 @@ function resolveOutputRewardEmotions(
   event: GameEventInstance,
   output: EventOutput
 ): CardAlias[] {
-  if (output.input.type === 'input') {
-    return getThisTurnPlacedAliases(event);
-  }
-  return normalizeOutputEmotions(output.outputEmotions);
+  const placed = getThisTurnPlacedAliases(event);
+  return normalizeOutputEmotions(output.outputEmotions).flatMap((emotion) =>
+    emotion === OUTPUT_PLACED_CARDS ? placed : [emotion]
+  );
 }
 
 function countBySuit(aliases: CardAlias[]): Map<CardSuit, number> {
@@ -97,7 +99,6 @@ export function matchesEventOutputInput(
 
   switch (input.type) {
     case 'default':
-    case 'input':
       return event.cardsPlacedThisTurn > 0;
     case 'suitQuantities':
       return matchesSuitQuantities(event.placedCardAliases, input.suitQuantities);

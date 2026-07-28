@@ -22,6 +22,7 @@ import {
   EventSeedDefinition,
   EventSeedsFile,
   GameEventDefinition,
+  OUTPUT_PLACED_CARDS,
   PersonalityEntry,
 } from '../types';
 import { collectPersonalityIds, validateEventSeeds } from '../validate';
@@ -375,7 +376,8 @@ function renderSearchableCardPicker(
   values: string[],
   allAliases: string[],
   onChange: (next: string[]) => void,
-  placeholder = 'Search cards…'
+  placeholder = 'Search cards…',
+  extraOptions: { value: string; label: string }[] = []
 ): HTMLElement {
   const wrap = el('div', { className: 'card-picker' });
   const chips = el('div', { className: 'chip-list' });
@@ -386,6 +388,8 @@ function renderSearchableCardPicker(
   }) as HTMLInputElement;
   const results = el('div', { className: 'card-picker-results' });
   let current = [...values];
+  const optionLabel = (value: string) =>
+    extraOptions.find((option) => option.value === value)?.label ?? value;
 
   const renderChips = () => {
     clear(chips);
@@ -394,7 +398,7 @@ function renderSearchableCardPicker(
         el(
           'span',
           { className: 'chip' },
-          value,
+          optionLabel(value),
           button(
             '×',
             () => {
@@ -413,19 +417,42 @@ function renderSearchableCardPicker(
   const renderResults = (query: string) => {
     clear(results);
     const q = query.toLowerCase().trim();
+    const filteredExtras = extraOptions.filter(
+      (option) =>
+        !current.includes(option.value) &&
+        (!q ||
+          option.label.toLowerCase().includes(q) ||
+          option.value.toLowerCase().includes(q))
+    );
     const filtered = allAliases
       .filter(
         (alias) =>
           !current.includes(alias) &&
           (!q || alias.toLowerCase().includes(q))
       )
-      .slice(0, 24);
+      .slice(0, Math.max(0, 24 - filteredExtras.length));
 
-    if (filtered.length === 0) {
+    if (filteredExtras.length === 0 && filtered.length === 0) {
       results.append(
         el('div', { className: 'empty', text: 'No cards match.' })
       );
       return;
+    }
+
+    for (const option of filteredExtras) {
+      results.append(
+        button(
+          option.label,
+          () => {
+            current = [...current, option.value];
+            onChange(current);
+            search.value = '';
+            renderChips();
+            renderResults('');
+          },
+          'btn small card-picker-option card-picker-option-special'
+        )
+      );
     }
 
     for (const alias of filtered) {
@@ -1117,11 +1144,14 @@ function renderResultsSection(
 
 function defaultOutputInput(type: EventOutputInput['type']): EventOutputInput {
   if (type === 'default') return { type: 'default' };
-  if (type === 'input') return { type: 'input' };
   if (type === 'suitQuantities') return { type: 'suitQuantities', suitQuantities: [] };
   if (type === 'suitEnergies') return { type: 'suitEnergies', suitEnergies: [] };
   return { type: 'cardEmotions', cardEmotions: [] };
 }
+
+const OUTPUT_EMOTION_EXTRA_OPTIONS = [
+  { value: OUTPUT_PLACED_CARDS, label: 'input (placed cards)' },
+];
 
 function renderOutputsSection(
   event: GameEventDefinition,
@@ -1198,7 +1228,6 @@ function renderOutputsSection(
             output.input.type,
             [
               { value: 'default', label: 'default' },
-              { value: 'input', label: 'input (placed cards)' },
               { value: 'suitQuantities', label: 'suitQuantities' },
               { value: 'suitEnergies', label: 'suitEnergies' },
               { value: 'cardEmotions', label: 'cardEmotions' },
@@ -1255,25 +1284,22 @@ function renderOutputsSection(
           setOutput({ input: { type: 'cardEmotions', cardEmotions: next } });
         })
       );
-    } else if (output.input.type === 'input') {
-      block.append(
-        el('div', {
-          className: 'meta',
-          text: 'Grants the same cards placed on this event during Sentir.',
-        })
-      );
     }
 
-    if (output.input.type !== 'input') {
-      block.append(
-        el('h3', { text: 'Output emotions' }),
-        renderSearchableCardPicker(emotions, cardAliases, (next) => {
+    block.append(
+      el('h3', { text: 'Output emotions' }),
+      renderSearchableCardPicker(
+        emotions,
+        cardAliases,
+        (next) => {
           setOutput({
             outputEmotions: next.length === 1 ? next[0] : next,
           });
-        })
-      );
-    }
+        },
+        'Search cards…',
+        OUTPUT_EMOTION_EXTRA_OPTIONS
+      )
+    );
 
     section.append(block);
   });

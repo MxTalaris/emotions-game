@@ -27,15 +27,18 @@ export interface DealBreaker {
 /**
  * Condition for an event output — type + related fields live together.
  * - default: at least one card attached this turn (Sentir)
- * - input: same trigger as default; grants the cards placed this turn
  * - suitQuantities / suitEnergies / cardEmotions: same idea as dealBreakers
  */
 export type EventOutputInput =
   | { type: 'default' }
-  | { type: 'input' }
   | { type: 'suitQuantities'; suitQuantities: SuitQuantity[] }
   | { type: 'suitEnergies'; suitEnergies: SuitEnergy[] }
   | { type: 'cardEmotions'; cardEmotions: CardAlias[] };
+
+/** Grants the exact cards placed on this event during Sentir. */
+export const OUTPUT_PLACED_CARDS = 'input' as const;
+
+export type OutputEmotionRef = CardAlias | typeof OUTPUT_PLACED_CARDS;
 
 export interface EventOutput {
   input: EventOutputInput;
@@ -44,7 +47,7 @@ export interface EventOutput {
   /** Among multiple valid exclusives, highest priority wins. */
   priority: number;
   /** One or more emotion models granted when this output wins. */
-  outputEmotions: CardAlias | CardAlias[];
+  outputEmotions: OutputEmotionRef | OutputEmotionRef[];
 }
 
 export type EventResultType =
