@@ -96,6 +96,7 @@ export interface EventModifiers {
 export interface GameEventDefinition {
   id: number;
   label: string;
+  description: string;
   energyAmount: number;
   energyAmountSecret: boolean;
   cardsPerTurn: number;

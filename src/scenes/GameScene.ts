@@ -66,7 +66,7 @@ type ViewportGesture =
       startY: number;
       originScrollX: number;
       originScrollY: number;
-      flowerTap: EventCircle | null;
+      eventTap: EventCircle | null;
     }
   | {
       type: 'hand-pan';
@@ -500,6 +500,8 @@ export class GameScene extends Phaser.Scene {
         deltaX: number,
         deltaY: number
       ) => {
+        if (this.flowerDetailPopup) return;
+
         if (this.isPointerOverHand(pointer)) {
           if (this.getMaxHandScroll() <= 0) return;
           const delta = Math.abs(deltaX) > Math.abs(deltaY) ? deltaX : deltaY;
@@ -577,8 +579,7 @@ export class GameScene extends Phaser.Scene {
       startY: pointer.y,
       originScrollX: this.treeScrollX,
       originScrollY: this.treeScrollY,
-      flowerTap:
-        eventAtPointer?.eventData.completed === true ? eventAtPointer : null,
+      eventTap: eventAtPointer,
     };
   }
 
@@ -682,7 +683,7 @@ export class GameScene extends Phaser.Scene {
           startY: next.y,
           originScrollX: this.treeScrollX,
           originScrollY: this.treeScrollY,
-          flowerTap: null,
+          eventTap: null,
         };
         return;
       }
@@ -692,13 +693,13 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (gesture.pointerId === pointer.id) {
-      if (gesture.type === 'tree-pan' && gesture.flowerTap) {
+      if (gesture.type === 'tree-pan' && gesture.eventTap) {
         const moved = Math.hypot(
           pointer.x - gesture.startX,
           pointer.y - gesture.startY
         );
         if (moved < 10) {
-          this.showFlowerDetail(gesture.flowerTap);
+          this.showEventDetail(gesture.eventTap);
         }
       }
       this.viewportGesture = null;
@@ -973,8 +974,8 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private showFlowerDetail(event: EventCircle): void {
-    if (this.flowerDetailPopup || !event.eventData.completed) return;
+  private showEventDetail(event: EventCircle): void {
+    if (this.flowerDetailPopup) return;
 
     this.flowerDetailPopup = new FlowerDetailPopup(this, event.eventData, () => {
       this.flowerDetailPopup = null;
