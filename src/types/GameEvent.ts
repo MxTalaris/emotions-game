@@ -27,10 +27,12 @@ export interface DealBreaker {
 /**
  * Condition for an event output — type + related fields live together.
  * - default: at least one card attached this turn (Sentir)
+ * - input: same trigger as default; grants the cards placed this turn
  * - suitQuantities / suitEnergies / cardEmotions: same idea as dealBreakers
  */
 export type EventOutputInput =
   | { type: 'default' }
+  | { type: 'input' }
   | { type: 'suitQuantities'; suitQuantities: SuitQuantity[] }
   | { type: 'suitEnergies'; suitEnergies: SuitEnergy[] }
   | { type: 'cardEmotions'; cardEmotions: CardAlias[] };

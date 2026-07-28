@@ -635,6 +635,74 @@ body {
   border-top: 1px solid var(--border);
 }
 
+.accordion {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  background: var(--surface-2);
+}
+
+.accordion-summary {
+  cursor: pointer;
+  padding: 12px 14px;
+  font-weight: 600;
+  list-style: none;
+  user-select: none;
+}
+
+.accordion-summary::-webkit-details-marker {
+  display: none;
+}
+
+.accordion-summary::before {
+  content: '▸ ';
+  color: var(--muted);
+}
+
+.accordion[open] > .accordion-summary::before {
+  content: '▾ ';
+}
+
+.accordion-body {
+  padding: 0 14px 14px;
+}
+
+.accordion-body .card-picker,
+.accordion-body .card-picker-results,
+.accordion-body .card-picker-search {
+  pointer-events: auto;
+}
+
+.card-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card-picker-search {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 8px 10px;
+  font: inherit;
+}
+
+.card-picker-results {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 160px;
+  overflow: auto;
+  padding: 4px 0;
+}
+
+.card-picker-option {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+
 .image-preview {
   width: 80px;
   height: 120px;

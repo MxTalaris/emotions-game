@@ -116,6 +116,22 @@ export function button(
   }) as HTMLButtonElement;
 }
 
+export function accordionSection(
+  title: string,
+  body: HTMLElement,
+  open = true
+): HTMLDetailsElement {
+  const details = el('details', {
+    className: 'accordion',
+    open,
+  }) as HTMLDetailsElement;
+  details.append(
+    el('summary', { className: 'accordion-summary', text: title }),
+    el('div', { className: 'accordion-body' }, body)
+  );
+  return details;
+}
+
 /** Simple modal overlay. Call close() to remove it from the DOM. */
 export function openModal(
   title: string,

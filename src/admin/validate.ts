@@ -247,6 +247,7 @@ export function validateEventSeeds(
           });
         }
         for (const alias of asAliasList(output.outputEmotions)) {
+          if (output.input.type === 'input') continue;
           if (!cardAliases.has(alias)) {
             errors.push(`${oPath}.outputEmotions: unknown "${alias}"`);
           }
