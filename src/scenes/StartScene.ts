@@ -9,6 +9,8 @@ import {
 import { PersonalityId } from '../types';
 import { css, domText, DomTextHandle, GAME_FONT, stopPointerBubble } from '../utils/domUi';
 
+const SCREEN_TEXT_WIDTH = GAME_WIDTH - 48;
+
 const CLOUD_SCALE = 0.8;
 const CLOUD_SPACING_X = 130;
 const CLOUD_SPACING_Y = 82;
@@ -36,25 +38,21 @@ export class StartScene extends Phaser.Scene {
       fontSize: '36px',
       color: '#ffffff',
       fontWeight: 'bold',
-      textAlign: 'center',
     });
 
     this.addFixedText(GAME_WIDTH / 2, 110, 'Sinta, escolha, descubra quem você é.', {
       fontSize: '16px',
       color: '#9fa8da',
-      textAlign: 'center',
     });
 
     this.addFixedText(GAME_WIDTH / 2, 145, 'Selecione até 2 personalidades para a run', {
       fontSize: '13px',
       color: '#7986cb',
-      textAlign: 'center',
     });
 
     this.seedHintText = this.addFixedText(GAME_WIDTH / 2, 170, '', {
       fontSize: '12px',
       color: '#a5d6a7',
-      textAlign: 'center',
     });
 
     this.createPlayButton(GAME_WIDTH / 2, 215);
@@ -68,9 +66,23 @@ export class StartScene extends Phaser.Scene {
     text: string,
     style: Record<string, string | number>
   ): DomTextHandle {
-    const handle = domText(this, text, style);
-    handle.dom.setPosition(x, y).setOrigin(0.5).setScrollFactor(0).setDepth(10);
-    return handle;
+    return domText(
+      this,
+      text,
+      {
+        width: `${SCREEN_TEXT_WIDTH}px`,
+        textAlign: 'center',
+        ...style,
+      },
+      {
+        x,
+        y,
+        originX: 0.5,
+        originY: 0.5,
+        scrollFactor: 0,
+        depth: 10,
+      }
+    );
   }
 
   private createPlayButton(x: number, y: number): void {
@@ -116,7 +128,6 @@ export class StartScene extends Phaser.Scene {
       fontSize: '14px',
       color: '#7986cb',
       fontWeight: 'bold',
-      textAlign: 'center',
     });
 
     if (personalities.length === 0) {
@@ -127,8 +138,6 @@ export class StartScene extends Phaser.Scene {
         {
           fontSize: '14px',
           color: '#5c6bc0',
-          textAlign: 'center',
-          maxWidth: '520px',
         }
       );
       return;

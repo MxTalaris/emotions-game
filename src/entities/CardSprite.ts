@@ -6,7 +6,7 @@ import {
 } from '../config/gameConfig';
 import { getSuitColor } from '../data/cards';
 import { CardInstance } from '../types';
-import { domText, DomTextHandle } from '../utils/domUi';
+import { domBoxLabel, domText, DomTextHandle } from '../utils/domUi';
 
 export function cardTextureKey(alias: string): string {
   return `card-img-${alias}`;
@@ -61,24 +61,33 @@ export class CardSprite extends Phaser.GameObjects.Container {
       children.push(rect);
     }
 
-    this.label = domText(scene, cardData.name, {
-      fontSize: '14px',
-      color: '#ffffff',
-      textAlign: 'center',
-      maxWidth: `${CARD_WIDTH - 10}px`,
-      wordBreak: 'break-word',
-    });
-    this.label.dom.setPosition(0, -12);
-    this.label.dom.setOrigin(0.5);
+    const cardTextWidth = CARD_WIDTH - 10;
 
-    const energyLabel = domText(scene, `${cardData.energyAmount}`, {
-      fontSize: '16px',
-      color: '#ffffff',
-      textAlign: 'center',
-      fontWeight: 'bold',
-    });
-    energyLabel.dom.setPosition(0, 18);
-    energyLabel.dom.setOrigin(0.5);
+    this.label = domText(
+      scene,
+      cardData.name,
+      {
+        fontSize: '14px',
+        color: '#ffffff',
+        textAlign: 'center',
+        width: `${cardTextWidth}px`,
+        wordBreak: 'break-word',
+      },
+      { x: 0, y: -12, originX: 0.5, originY: 0.5 }
+    );
+
+    const energyLabel = domBoxLabel(
+      scene,
+      `${cardData.energyAmount}`,
+      cardTextWidth,
+      22,
+      {
+        fontSize: '16px',
+        color: '#ffffff',
+        fontWeight: 'bold',
+      },
+      { x: 0, y: 18 }
+    );
 
     this.add([...children, this.label.dom, energyLabel.dom]);
     this.setSize(CARD_WIDTH, CARD_HEIGHT);

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { domText, DomTextHandle } from '../utils/domUi';
+import { domBoxLabel, domText, DomTextHandle } from '../utils/domUi';
 
 interface FeelButtonOptions {
   x: number;
@@ -27,13 +27,18 @@ export class FeelButton extends Phaser.GameObjects.Container {
     );
     this.background.setStrokeStyle(2, 0x7986cb);
 
-    this.label = domText(scene, options.label, {
-      fontSize: '16px',
-      color: '#ffffff',
-      fontWeight: 'bold',
-      textAlign: 'center',
-    });
-    this.label.dom.setOrigin(0.5);
+    this.label = domBoxLabel(
+      scene,
+      options.label,
+      options.width,
+      options.height,
+      {
+        fontSize: '16px',
+        color: '#ffffff',
+        fontWeight: 'bold',
+      },
+      { x: 0, y: 0 }
+    );
 
     this.add([this.background, this.label.dom]);
     this.setSize(options.width, options.height);

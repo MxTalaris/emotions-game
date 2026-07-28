@@ -42,6 +42,7 @@ import {
   HAND_CARD_SCALE,
   HAND_WHEEL,
   HAND_Y,
+  BGM,
   MUSIC_BUTTON,
   TREE_ZOOM,
 } from '../config/gameConfig';
@@ -129,7 +130,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload(): void {
-    this.load.audio('bgm-chill', 'assets/audio/bgm-chill.ogg');
+    this.load.audio(BGM.key, BGM.paths);
 
     const seen = new Set<string>();
     for (const definition of [...cards, APATHY_CARD]) {
@@ -194,9 +195,9 @@ export class GameScene extends Phaser.Scene {
   private setupBackgroundMusic(): void {
     if (this.bgm) return;
 
-    this.bgm = this.sound.add('bgm-chill', {
-      loop: true,
-      volume: 0.35,
+    this.bgm = this.sound.add(BGM.key, {
+      loop: BGM.loop,
+      volume: BGM.volume,
     });
 
     const tryPlay = () => {
@@ -808,12 +809,17 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createTurnDisplay(): void {
-    this.turnText = domText(this, this.getTurnLabel(), {
-      fontSize: '16px',
-      color: '#3d3428',
-      fontWeight: 'bold',
-    });
-    this.turnText.dom.setPosition(16, 16).setOrigin(0, 0).setScrollFactor(0).setDepth(200);
+    this.turnText = domText(
+      this,
+      this.getTurnLabel(),
+      {
+        fontSize: '16px',
+        color: '#3d3428',
+        fontWeight: 'bold',
+        textAlign: 'left',
+      },
+      { x: 16, y: 16, originX: 0, originY: 0, scrollFactor: 0, depth: 200 }
+    );
   }
 
   private getTurnLabel(): string {

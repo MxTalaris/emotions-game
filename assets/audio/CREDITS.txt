@@ -1,6 +1,10 @@
-Calm Theme
-Author: pebonius
-Source: https://opengameart.org/content/calm-theme
-License: CC0 (public domain) — free for any use
-Optional credit: https://pebonius.itch.io/
-File: bgm-chill.ogg
+Sirens
+Composer: Ludwig Göransson
+Album: The Odyssey (Original Motion Picture Soundtrack)
+Track: 14 — Sirens
+
+Place your licensed copy as:
+  assets/audio/bgm-sirens.mp3
+
+Previous BGM (replaced): Calm Theme by pebonius — CC0
+  https://opengameart.org/content/calm-theme

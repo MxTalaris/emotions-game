@@ -4,7 +4,7 @@ import { getCardByAlias } from '../data/cards';
 import { resolveModifiedCardEnergy } from '../systems/resolveModifiedCardEnergy';
 import { CardAlias, EventCompletionCause, GameEventInstance } from '../types';
 import { drawFlower, drawSeed } from '../utils/gardenGraphics';
-import { domText, DomTextHandle } from '../utils/domUi';
+import { domBoxLabel, domText, DomTextHandle } from '../utils/domUi';
 
 const ENERGY_BAR_HEIGHT = 10;
 const ENERGY_BAR_PADDING_X = 8;
@@ -30,16 +30,26 @@ export class EventCircle extends Phaser.GameObjects.Container {
 
     this.bodyGfx = scene.add.graphics();
 
-    this.label = domText(scene, eventData.label, {
-      fontSize: '13px',
-      color: '#3d3428',
-      fontWeight: 'bold',
-      textAlign: 'center',
-      maxWidth: `${eventData.width + 40}px`,
-      wordBreak: 'break-word',
-    });
-    this.label.dom.setPosition(0, -eventData.height / 2 - 16);
-    this.label.dom.setOrigin(0.5);
+    const labelWidth = eventData.width + 40;
+
+    this.label = domText(
+      scene,
+      eventData.label,
+      {
+        fontSize: '13px',
+        color: '#3d3428',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        width: `${labelWidth}px`,
+        wordBreak: 'break-word',
+      },
+      {
+        x: 0,
+        y: -eventData.height / 2 - 16,
+        originX: 0.5,
+        originY: 0.5,
+      }
+    );
 
     const barWidth = eventData.width - ENERGY_BAR_PADDING_X * 2;
     const barY = -eventData.height / 2 + ENERGY_BAR_PADDING_TOP + ENERGY_BAR_HEIGHT / 2;
@@ -63,26 +73,31 @@ export class EventCircle extends Phaser.GameObjects.Container {
     this.add([this.bodyGfx, this.label.dom, this.energyBarBg, this.energyBarFill]);
 
     if (eventData.energyAmountSecret) {
-      this.energySecretText = domText(scene, '?', {
+      this.energySecretText = domBoxLabel(scene, '?', barWidth, ENERGY_BAR_HEIGHT, {
         fontSize: '11px',
         color: '#ffffff',
         fontWeight: 'bold',
-        textAlign: 'center',
-      });
-      this.energySecretText.dom.setPosition(0, barY);
-      this.energySecretText.dom.setOrigin(0.5);
+      }, { x: 0, y: barY });
       this.add(this.energySecretText.dom);
     }
 
     if (eventData.autoComplete > 0) {
-      this.turnsText = domText(scene, '', {
-        fontSize: '11px',
-        color: '#6b4f2e',
-        fontWeight: 'bold',
-        textAlign: 'left',
-      });
-      this.turnsText.dom.setPosition(-eventData.width / 2 + 6, eventData.height / 2 - 6);
-      this.turnsText.dom.setOrigin(0, 1);
+      this.turnsText = domText(
+        scene,
+        '',
+        {
+          fontSize: '11px',
+          color: '#6b4f2e',
+          fontWeight: 'bold',
+          textAlign: 'left',
+        },
+        {
+          x: -eventData.width / 2 + 6,
+          y: eventData.height / 2 - 6,
+          originX: 0,
+          originY: 1,
+        }
+      );
       this.add(this.turnsText.dom);
       this.refreshTurnsText();
     }
@@ -322,14 +337,18 @@ export class EventCircle extends Phaser.GameObjects.Container {
       this.add(dot);
 
       if (this.eventData.cardsRequired) {
-        const marker = domText(scene, '!', {
-          fontSize: '14px',
-          color: '#ef5350',
-          fontWeight: 'bold',
-          textAlign: 'center',
-        });
-        marker.dom.setPosition(slot.x, slot.y);
-        marker.dom.setOrigin(0.5);
+        const marker = domBoxLabel(
+          scene,
+          '!',
+          EVENT_TREE.slotDotRadius * 4,
+          EVENT_TREE.slotDotRadius * 4,
+          {
+            fontSize: '14px',
+            color: '#ef5350',
+            fontWeight: 'bold',
+          },
+          { x: slot.x, y: slot.y }
+        );
         this.slotRequiredMarkers.push(marker);
         this.add(marker.dom);
       }

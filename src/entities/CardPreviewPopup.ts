@@ -7,7 +7,7 @@ import {
 } from '../config/gameConfig';
 import { getSuitColor } from '../data/cards';
 import { CardInstance } from '../types';
-import { domText } from '../utils/domUi';
+import { domBoxLabel, domText } from '../utils/domUi';
 import { cardTextureKey } from './CardSprite';
 
 const PREVIEW_SCALE = 2.35;
@@ -63,26 +63,38 @@ export class CardPreviewPopup extends Phaser.GameObjects.Container {
       visuals.push(background);
     }
 
-    const title = domText(scene, card.name, {
-      fontSize: '26px',
-      color: '#ffffff',
-      fontWeight: 'bold',
-      textAlign: 'center',
-      maxWidth: `${cardWidth - 28}px`,
-      wordBreak: 'break-word',
-    });
-    title.dom
-      .setPosition(centerX, centerY - cardHeight * 0.28)
-      .setOrigin(0.5)
-      .setScrollFactor(0);
+    const title = domText(
+      scene,
+      card.name,
+      {
+        fontSize: '26px',
+        color: '#ffffff',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        width: `${cardWidth - 28}px`,
+        wordBreak: 'break-word',
+      },
+      {
+        x: centerX,
+        y: centerY - cardHeight * 0.28,
+        originX: 0.5,
+        originY: 0.5,
+        scrollFactor: 0,
+      }
+    );
 
-    const energy = domText(scene, `${card.energyAmount}`, {
-      fontSize: '38px',
-      color: '#ffffff',
-      fontWeight: 'bold',
-      textAlign: 'center',
-    });
-    energy.dom.setPosition(centerX, centerY + 8).setOrigin(0.5).setScrollFactor(0);
+    const energy = domBoxLabel(
+      scene,
+      `${card.energyAmount}`,
+      cardWidth - 28,
+      44,
+      {
+        fontSize: '38px',
+        color: '#ffffff',
+        fontWeight: 'bold',
+      },
+      { x: centerX, y: centerY + 8, scrollFactor: 0 }
+    );
 
     const details = domText(
       scene,
@@ -91,12 +103,16 @@ export class CardPreviewPopup extends Phaser.GameObjects.Container {
         fontSize: '14px',
         color: '#ffffff',
         textAlign: 'center',
+        width: `${cardWidth - 28}px`,
+      },
+      {
+        x: centerX,
+        y: centerY + cardHeight * 0.3,
+        originX: 0.5,
+        originY: 0.5,
+        scrollFactor: 0,
       }
     );
-    details.dom
-      .setPosition(centerX, centerY + cardHeight * 0.3)
-      .setOrigin(0.5)
-      .setScrollFactor(0);
 
     const close = () => {
       onClose();

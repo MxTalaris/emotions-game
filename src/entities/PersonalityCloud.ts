@@ -44,14 +44,19 @@ export class PersonalityCloud extends Phaser.GameObjects.Container {
     graphics.lineStyle(2, 0xffffff, 0.35);
     graphics.strokeEllipse(0, -6, 110, 68);
 
-    const nameText = domText(scene, label, {
-      fontSize: '15px',
-      color: '#1a1a2e',
-      fontWeight: 'bold',
-      textAlign: 'center',
-    });
-    nameText.dom.setPosition(0, -4);
-    nameText.dom.setOrigin(0.5);
+    const nameText = domText(
+      scene,
+      label,
+      {
+        fontSize: '15px',
+        color: '#1a1a2e',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        width: '110px',
+        wordBreak: 'break-word',
+      },
+      { x: 0, y: -4, originX: 0.5, originY: 0.5 }
+    );
 
     this.add([graphics, nameText.dom]);
     this.setSize(120, 72);
