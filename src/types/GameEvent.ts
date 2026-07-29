@@ -80,6 +80,11 @@ export type EventAction =
     }
   | {
       type: 'endGame';
+    }
+  | {
+      type: 'changeTheme';
+      /** Theme alias from themes-catalog.json */
+      theme: string;
     };
 
 export interface EventResult {

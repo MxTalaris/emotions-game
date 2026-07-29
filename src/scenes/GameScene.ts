@@ -24,7 +24,14 @@ import {
 } from '../systems/processFeelings';
 import { TurnManager } from '../systems/TurnManager';
 import { SoundEffects } from '../systems/SoundEffects';
-import { getBackgroundMusicConfig } from '../data/sounds';
+import {
+  drawThemeBackground,
+  loadThemeBackgroundImage,
+  loadThemeBgm,
+  preloadThemeAssets,
+  ThemeManager,
+} from '../systems/ThemeManager';
+import { getDefaultThemeAlias } from '../data/themes';
 import {
   CardAlias,
   createCardInstance,
@@ -35,7 +42,6 @@ import {
 } from '../types';
 import {
   CARD_HEIGHT,
-  EVENT_COLORS,
   EVENT_TREE,
   EVENT_VIEW_TOP,
   FEEL_BUTTON,
@@ -52,7 +58,6 @@ import { APATHY_CARD, cards, getInitialHandCards } from '../data/cards';
 import { isCatalogPersonalityId } from '../data/personalities';
 import {
   buildBranchCurve,
-  drawSkyGroundBackground,
   Point,
   strokeCubicProgress,
 } from '../utils/gardenGraphics';
@@ -115,6 +120,9 @@ export class GameScene extends Phaser.Scene {
   private flowerDetailPopup: FlowerDetailPopup | null = null;
   private cardPreviewPopup: CardPreviewPopup | null = null;
   private soundEffects!: SoundEffects;
+  private themeManager!: ThemeManager;
+  private backgroundObjects: Phaser.GameObjects.GameObject[] = [];
+  private currentBgmPath: string | null = null;
   private launchSeedId: string | null = null;
   private launchSelectedPersonalities: PersonalityId[] = [];
 
@@ -133,9 +141,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload(): void {
-    const bgm = getBackgroundMusicConfig();
+    this.themeManager = new ThemeManager(getDefaultThemeAlias());
+    const theme = this.themeManager.getActive();
+    preloadThemeAssets(this, theme);
+
+    const bgm = this.themeManager.getBackgroundMusicConfig();
     this.load.audio(BGM.key, bgm.path);
-    this.soundEffects = new SoundEffects(this);
+    this.soundEffects = new SoundEffects(this, theme.sounds);
     this.soundEffects.preload();
 
     const seen = new Set<string>();
@@ -177,8 +189,9 @@ export class GameScene extends Phaser.Scene {
     this.cardPreviewPopup = null;
     this.bgm = null;
     this.musicEnabled = false;
+    this.backgroundObjects = [];
 
-    drawSkyGroundBackground(this, GAME_WIDTH, GAME_HEIGHT);
+    this.applyThemeBackground();
 
     this.treeLayer = this.add.container(0, 0).setDepth(10);
     this.treeGraphics = this.add.graphics();
@@ -198,11 +211,95 @@ export class GameScene extends Phaser.Scene {
     this.restoreSessionPersonalities();
   }
 
+  changeTheme(themeAlias: string): void {
+    if (!this.themeManager.changeTheme(themeAlias)) return;
+
+    this.applyThemeBackground(true);
+    this.applyThemeVisuals();
+    this.applyThemeAudio();
+  }
+
+  private applyThemeBackground(reloadImage = false): void {
+    for (const obj of this.backgroundObjects) {
+      obj.destroy();
+    }
+    this.backgroundObjects = [];
+
+    const theme = this.themeManager.getActive();
+    const draw = () => {
+      this.backgroundObjects = drawThemeBackground(
+        this,
+        GAME_WIDTH,
+        GAME_HEIGHT,
+        theme
+      );
+    };
+
+    if (reloadImage && theme.background.image) {
+      loadThemeBackgroundImage(this, theme, draw);
+      return;
+    }
+
+    draw();
+  }
+
+  private applyThemeVisuals(): void {
+    const theme = this.themeManager.getActive();
+    this.feelButton?.applyTheme(theme.buttons);
+    this.musicButton?.applyTheme(theme.buttons);
+    for (const event of this.eventCircles) {
+      event.applyTheme(theme.eventColors);
+    }
+    this.redrawBranches();
+  }
+
+  private applyThemeAudio(): void {
+    const theme = this.themeManager.getActive();
+    this.soundEffects.setCatalog(theme.sounds);
+    this.soundEffects.reloadMissing();
+
+    const bgmConfig = this.themeManager.getBackgroundMusicConfig();
+    const wasPlaying = Boolean(this.bgm?.isPlaying);
+    this.bgm?.stop();
+    this.bgm?.destroy();
+    this.bgm = null;
+
+    if (
+      this.currentBgmPath &&
+      this.currentBgmPath !== bgmConfig.path &&
+      this.cache.audio.exists(BGM.key)
+    ) {
+      this.cache.audio.remove(BGM.key);
+    }
+    this.currentBgmPath = bgmConfig.path;
+
+    const startBgm = () => {
+      if (!this.cache.audio.exists(BGM.key)) return;
+      this.bgm = this.sound.add(BGM.key, {
+        loop: BGM.loop,
+        volume: bgmConfig.volume,
+      });
+      if (this.musicEnabled || wasPlaying) {
+        this.musicEnabled = true;
+        this.sound.unlock();
+        this.bgm.play();
+      }
+    };
+
+    if (this.cache.audio.exists(BGM.key)) {
+      startBgm();
+      return;
+    }
+
+    loadThemeBgm(this, BGM.key, bgmConfig.path, startBgm);
+  }
+
   private setupBackgroundMusic(): void {
     if (this.bgm) return;
     if (!this.cache.audio.exists(BGM.key)) return;
 
-    const { volume } = getBackgroundMusicConfig();
+    const { volume } = this.themeManager.getBackgroundMusicConfig();
+    this.currentBgmPath = this.themeManager.getBackgroundMusicConfig().path;
     this.bgm = this.sound.add(BGM.key, {
       loop: BGM.loop,
       volume,
@@ -241,7 +338,11 @@ export class GameScene extends Phaser.Scene {
     const eventInstances = this.eventManager.generateInitialEvents();
 
     this.eventCircles = eventInstances.map((instance) => {
-      const circle = new EventCircle(this, instance);
+      const circle = new EventCircle(
+        this,
+        instance,
+        this.themeManager.getActive().eventColors
+      );
       this.treeLayer.add(circle);
       return circle;
     });
@@ -265,7 +366,11 @@ export class GameScene extends Phaser.Scene {
     );
 
     const childCircles = instances.map((instance) => {
-      const circle = new EventCircle(this, instance);
+      const circle = new EventCircle(
+        this,
+        instance,
+        this.themeManager.getActive().eventColors
+      );
       circle.setAlpha(0);
       circle.setScale(0.2);
       this.treeLayer.add(circle);
@@ -314,9 +419,10 @@ export class GameScene extends Phaser.Scene {
 
   private redrawBranches(): void {
     this.treeGraphics.clear();
+    const connector = this.themeManager.getActive().eventColors.connector;
     this.treeGraphics.lineStyle(
       EVENT_TREE.branchWidth,
-      EVENT_COLORS.connector,
+      connector,
       0.8
     );
 
@@ -724,6 +830,7 @@ export class GameScene extends Phaser.Scene {
       width: FEEL_BUTTON.width,
       height: FEEL_BUTTON.height,
       label: 'Sentir',
+      theme: this.themeManager.getActive().buttons,
       onClick: () => {
         if (!this.canPressFeel()) return;
         this.soundEffects.play('feelClick');
@@ -739,6 +846,7 @@ export class GameScene extends Phaser.Scene {
       y: MUSIC_BUTTON.y,
       size: MUSIC_BUTTON.size,
       enabled: false,
+      theme: this.themeManager.getActive().buttons,
       onToggle: (enabled) => this.setMusicEnabled(enabled),
     });
     this.musicButton.setDepth(200);
@@ -1190,6 +1298,13 @@ export class GameScene extends Phaser.Scene {
         this.endGame();
         continue;
       }
+
+      if (action.type === 'changeTheme') {
+        this.changeTheme(action.theme);
+        continue;
+      }
+
+      if (action.type !== 'createEvent') continue;
 
       const templateId = Number(action.event);
       if (Number.isNaN(templateId)) continue;

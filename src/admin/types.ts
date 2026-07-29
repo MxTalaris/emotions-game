@@ -78,6 +78,10 @@ export type EventAction =
     }
   | {
       type: 'endGame';
+    }
+  | {
+      type: 'changeTheme';
+      theme: string;
     };
 
 export interface EventResult {
@@ -178,3 +182,102 @@ export function createEmptySoundsCatalog(): SoundsCatalog {
     backgroundMusic: { path: null, volume: 0.35 },
   };
 }
+
+export interface ThemeBackground {
+  image: string | null;
+  skyTop: string;
+  skyMid: string;
+  ground: string;
+}
+
+export interface ThemeBorders {
+  stroke: string;
+  ready: string;
+  connector: string;
+  completedStroke: string;
+  fill: string;
+}
+
+export interface ThemeButtons {
+  fill: string;
+  stroke: string;
+  hover: string;
+  disabled: string;
+  labelText: string;
+}
+
+export interface ThemeEventColorsHex {
+  fill: string;
+  stroke: string;
+  completed: string;
+  completedStroke: string;
+  flowerCenter: string;
+  flowerPetal: string;
+  flowerPetalAlt: string;
+  ready: string;
+  connector: string;
+  slotDot: string;
+  slotDotFilled: string;
+  slotRequired: string;
+  energyBarBg: string;
+  energyBarFill: string;
+  energyBarSecret: string;
+}
+
+export interface ThemeEntry {
+  alias: string;
+  name: string;
+  background: ThemeBackground;
+  borders: ThemeBorders;
+  buttons: ThemeButtons;
+  eventColors: ThemeEventColorsHex;
+  sounds: SoundsCatalog;
+}
+
+export interface ThemesCatalogFile {
+  defaultTheme: string;
+  themes: ThemeEntry[];
+}
+
+export const THEME_BORDER_KEYS = [
+  'stroke',
+  'ready',
+  'connector',
+  'completedStroke',
+  'fill',
+] as const;
+
+export const THEME_BORDER_LABELS: Record<(typeof THEME_BORDER_KEYS)[number], string> = {
+  stroke: 'Borda padrão',
+  ready: 'Borda pronta',
+  connector: 'Ramos / conectores',
+  completedStroke: 'Borda concluída',
+  fill: 'Preenchimento',
+};
+
+export const THEME_BUTTON_KEYS = [
+  'fill',
+  'stroke',
+  'hover',
+  'disabled',
+  'labelText',
+] as const;
+
+export const THEME_BUTTON_LABELS: Record<(typeof THEME_BUTTON_KEYS)[number], string> = {
+  fill: 'Fundo',
+  stroke: 'Borda',
+  hover: 'Hover',
+  disabled: 'Desabilitado',
+  labelText: 'Texto',
+};
+
+export const THEME_BACKGROUND_KEYS = ['skyTop', 'skyMid', 'ground'] as const;
+
+export const THEME_BACKGROUND_LABELS: Record<
+  (typeof THEME_BACKGROUND_KEYS)[number],
+  string
+> = {
+  skyTop: 'Céu (topo)',
+  skyMid: 'Céu (meio)',
+  ground: 'Solo',
+};

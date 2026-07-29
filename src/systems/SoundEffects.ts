@@ -2,8 +2,9 @@ import Phaser from 'phaser';
 import {
   getSoundAction,
   SOUND_SFX_IDS,
+  SoundActionConfig,
   SoundSfxId,
-  soundsCatalog,
+  SoundsCatalog,
 } from '../data/sounds';
 
 function audioKey(id: SoundSfxId): string {
@@ -11,37 +12,89 @@ function audioKey(id: SoundSfxId): string {
 }
 
 /**
- * Loads and plays optional SFX from sounds-catalog.json.
+ * Loads and plays optional SFX from the active theme sounds catalog.
  * Missing / empty path → no load and no playback.
- * Background music is handled separately in GameScene.
  */
 export class SoundEffects {
   private readonly scene: Phaser.Scene;
   private readonly loaded = new Set<SoundSfxId>();
+  private catalog: SoundsCatalog;
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene, catalog: SoundsCatalog) {
     this.scene = scene;
+    this.catalog = catalog;
   }
 
   /** Queue catalog SFX that have a path for Phaser preload. */
   preload(): void {
     for (const id of SOUND_SFX_IDS) {
-      const { path } = soundsCatalog[id];
-      if (!path) continue;
-      this.scene.load.audio(audioKey(id), path);
-      this.loaded.add(id);
+      this.queueLoad(id);
     }
   }
 
+  setCatalog(catalog: SoundsCatalog): void {
+    for (const id of SOUND_SFX_IDS) {
+      const key = audioKey(id);
+      const nextPath = catalog[id].path;
+      const prevPath = this.catalog[id]?.path;
+      if (nextPath !== prevPath && this.scene.cache.audio.exists(key)) {
+        this.scene.cache.audio.remove(key);
+        this.loaded.delete(id);
+      }
+    }
+    this.catalog = catalog;
+    for (const id of SOUND_SFX_IDS) {
+      this.queueLoad(id);
+    }
+  }
+
+  private queueLoad(id: SoundSfxId): void {
+    const { path } = this.catalog[id];
+    const key = audioKey(id);
+    if (!path) {
+      this.loaded.delete(id);
+      return;
+    }
+    if (this.scene.cache.audio.exists(key)) {
+      this.loaded.add(id);
+      return;
+    }
+    this.scene.load.audio(key, path);
+    this.loaded.add(id);
+  }
+
+  reloadMissing(onComplete?: () => void): void {
+    let queued = false;
+    for (const id of SOUND_SFX_IDS) {
+      const { path } = this.catalog[id];
+      const key = audioKey(id);
+      if (!path || this.scene.cache.audio.exists(key)) continue;
+      this.scene.load.audio(key, path);
+      this.loaded.add(id);
+      queued = true;
+    }
+    if (!queued) {
+      onComplete?.();
+      return;
+    }
+    this.scene.load.once(Phaser.Loader.Events.COMPLETE, () => onComplete?.());
+    this.scene.load.start();
+  }
+
   play(id: SoundSfxId): void {
-    const config = getSoundAction(id);
+    const config = this.getAction(id);
+    const key = audioKey(id);
     if (!config.path || !this.loaded.has(id)) return;
-    if (!this.scene.cache.audio.exists(audioKey(id))) return;
+    if (!this.scene.cache.audio.exists(key)) return;
 
     this.scene.sound.unlock();
-    this.scene.sound.play(audioKey(id), {
+    this.scene.sound.play(key, {
       volume: config.volume,
       loop: false,
     });
+  }
+
+  private getAction(id: SoundSfxId): SoundActionConfig {
+    return this.catalog[id] ?? getSoundAction(id);
   }
 }

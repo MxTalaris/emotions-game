@@ -62,6 +62,14 @@ function loadCatalog(raw: Record<string, Partial<SoundActionConfig>>): SoundsCat
   return catalog;
 }
 
+export function createEmptySoundsCatalog(): SoundsCatalog {
+  const catalog = {} as SoundsCatalog;
+  for (const id of SOUND_ACTION_IDS) {
+    catalog[id] = normalizeEntry(undefined, DEFAULT_VOLUMES[id]);
+  }
+  return catalog;
+}
+
 export const soundsCatalog: SoundsCatalog = loadCatalog(
   soundsCatalogJson as Record<string, Partial<SoundActionConfig>>
 );

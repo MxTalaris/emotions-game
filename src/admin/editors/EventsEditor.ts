@@ -38,6 +38,7 @@ export interface EventsEditorContext {
   setSeeds: (next: EventSeedsFile) => void;
   getPersonalities: () => PersonalityEntry[];
   getCardAliases: () => string[];
+  getThemeAliases: () => string[];
   setStatus: (message: string, kind?: 'ok' | 'err' | 'warn') => void;
   onChanged: () => void;
 }
@@ -315,7 +316,8 @@ async function saveEvents(
   const data = ctx.getSeeds();
   const cardAliases = new Set(ctx.getCardAliases());
   const personalityIds = collectPersonalityIds(ctx.getPersonalities());
-  const errors = validateEventSeeds(data, cardAliases, personalityIds);
+  const themeAliases = new Set(ctx.getThemeAliases());
+  const errors = validateEventSeeds(data, cardAliases, personalityIds, themeAliases);
   clear(errorsBox);
   if (errors.length) {
     errorsBox.className = 'errors';
@@ -841,6 +843,7 @@ function renderActionEditor(
   onRemove: () => void,
   cardAliases: string[],
   personalityIds: string[],
+  themeAliases: string[],
   seed: EventSeedDefinition,
   seedIndex: number,
   ctx: EventsEditorContext,
@@ -857,6 +860,7 @@ function renderActionEditor(
       { value: 'createEvent', label: 'createEvent' },
       { value: 'createEmotion', label: 'createEmotion' },
       { value: 'generatePersonality', label: 'generatePersonality' },
+      { value: 'changeTheme', label: 'changeTheme' },
       { value: 'endGame', label: 'endGame' },
     ],
     (v) => {
@@ -876,6 +880,11 @@ function renderActionEditor(
         onChange({
           type: 'generatePersonality',
           personality: personalityIds[0] ?? 'warm',
+        });
+      } else if (v === 'changeTheme') {
+        onChange({
+          type: 'changeTheme',
+          theme: themeAliases[0] ?? 'basic',
         });
       } else {
         onChange({ type: 'endGame' });
@@ -957,6 +966,17 @@ function renderActionEditor(
         )
       )
     );
+  } else if (action.type === 'changeTheme') {
+    block.append(
+      field(
+        'Theme alias',
+        selectInput(
+          action.theme,
+          themeAliases.map((alias) => ({ value: alias, label: alias })),
+          (v) => onChange({ ...action, theme: v })
+        )
+      )
+    );
   }
 
   return block;
@@ -969,6 +989,7 @@ function renderResultsSection(
   ctx: EventsEditorContext,
   cardAliases: string[],
   personalityIds: string[],
+  themeAliases: string[],
   seed: EventSeedDefinition,
   dealBreakerAliases: string[],
   rerender: () => void
@@ -1125,6 +1146,7 @@ function renderResultsSection(
           },
           cardAliases,
           personalityIds,
+          themeAliases,
           seed,
           seedIndex,
           ctx,
@@ -2000,6 +2022,7 @@ function renderEventForm(
         ctx,
         cardAliases,
         personalityIds,
+        ctx.getThemeAliases(),
         liveSeed,
         (liveEvent.dealBreakers ?? []).map((d) => d.alias),
         rerender

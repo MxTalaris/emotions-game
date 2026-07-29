@@ -2,7 +2,8 @@ export type DataResource =
   | 'event-templates'
   | 'emotions-catalog'
   | 'personalities-catalog'
-  | 'sounds-catalog';
+  | 'sounds-catalog'
+  | 'themes-catalog';
 
 export async function loadData<T>(name: DataResource): Promise<T> {
   const res = await fetch(`/api/data/${name}`);
@@ -68,6 +69,33 @@ export async function uploadSoundFile(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       actionId,
+      filename: file.name,
+      contentBase64,
+    }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(body.error ?? `Upload failed (${res.status})`);
+  }
+  return String(body.path);
+}
+
+export async function uploadThemeBackground(
+  themeAlias: string,
+  file: File
+): Promise<string> {
+  const contentBase64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.onerror = () => reject(reader.error ?? new Error('Read failed'));
+    reader.readAsDataURL(file);
+  });
+
+  const res = await fetch('/api/upload/theme-bg', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      themeAlias,
       filename: file.name,
       contentBase64,
     }),

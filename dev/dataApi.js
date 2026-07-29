@@ -6,6 +6,7 @@ const ALLOWED = {
   'emotions-catalog': 'emotions-catalog.json',
   'personalities-catalog': 'personalities-catalog.json',
   'sounds-catalog': 'sounds-catalog.json',
+  'themes-catalog': 'themes-catalog.json',
 };
 
 const ALLOWED_IMAGE_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif']);
@@ -36,9 +37,11 @@ function mountDataApi(app) {
   const storageDir = path.join(__dirname, '..', 'storage');
   const cardsDir = path.join(storageDir, 'cards');
   const audioDir = path.join(storageDir, 'audio');
+  const themesDir = path.join(storageDir, 'themes');
 
   fs.mkdirSync(cardsDir, { recursive: true });
   fs.mkdirSync(audioDir, { recursive: true });
+  fs.mkdirSync(themesDir, { recursive: true });
 
   app.use('/storage', (req, res, next) => {
     const rel = decodeURIComponent(req.path).replace(/^\/+/, '');
@@ -192,6 +195,47 @@ function mountDataApi(app) {
       const outPath = path.join(audioDir, outName);
       fs.writeFileSync(outPath, buffer);
       const urlPath = `/storage/audio/${outName}`;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ ok: true, path: urlPath }));
+    } catch (err) {
+      res.statusCode = 400;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(
+        JSON.stringify({
+          error: err instanceof Error ? err.message : String(err),
+        })
+      );
+    }
+  });
+
+  app.post('/api/upload/theme-bg', async (req, res) => {
+    try {
+      const body = JSON.parse((await readRequestBody(req)).toString('utf8'));
+      const themeAlias = safeId(body.themeAlias, 'theme');
+      const filename = String(body.filename || 'background.png');
+      const ext = path.extname(filename).toLowerCase() || '.png';
+      if (!ALLOWED_IMAGE_EXT.has(ext)) {
+        res.statusCode = 400;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: `Unsupported image type: ${ext}` }));
+        return;
+      }
+      const base64 = String(body.contentBase64 || '');
+      const raw = base64.includes(',')
+        ? base64.slice(base64.indexOf(',') + 1)
+        : base64;
+      const buffer = Buffer.from(raw, 'base64');
+      if (!buffer.length) {
+        res.statusCode = 400;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Empty image data' }));
+        return;
+      }
+
+      const outName = `${themeAlias}-${Date.now()}${ext}`;
+      const outPath = path.join(themesDir, outName);
+      fs.writeFileSync(outPath, buffer);
+      const urlPath = `/storage/themes/${outName}`;
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify({ ok: true, path: urlPath }));
     } catch (err) {

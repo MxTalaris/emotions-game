@@ -178,6 +178,10 @@
                   "personality": "all",
                   "event": "6",
                   "delay": 0
+                },
+                {
+                  "type": "changeTheme",
+                  "theme": "dune-theme"
                 }
               ]
             }
