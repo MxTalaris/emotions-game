@@ -1,0 +1,133 @@
+{
+  "defaultTheme": "basic",
+  "themes": [
+    {
+      "alias": "basic",
+      "name": "Basic",
+      "background": {
+        "image": "/assets/backgrounds/forest-grounds-bg-02.png",
+        "overlayImage": "/assets/backgrounds/forest-grounds-bg-01.png",
+        "skyTop": "#c5dff0",
+        "skyMid": "#e8f0d8",
+        "ground": "#d4c4a8"
+      },
+      "borders": {
+        "stroke": "#a67c52",
+        "ready": "#e8a838",
+        "connector": "#6b4f2e",
+        "completedStroke": "#c45d7a",
+        "fill": "#8d6e4c"
+      },
+      "buttons": {
+        "fill": "#5c6bc0",
+        "stroke": "#7986cb",
+        "hover": "#7986cb",
+        "disabled": "#444444",
+        "labelText": "#ffffff"
+      },
+      "eventColors": {
+        "fill": "#8d6e4c",
+        "stroke": "#a67c52",
+        "completed": "#e891a8",
+        "completedStroke": "#c45d7a",
+        "flowerCenter": "#f5d76e",
+        "flowerPetal": "#e891a8",
+        "flowerPetalAlt": "#f0a8b8",
+        "ready": "#e8a838",
+        "connector": "#6b4f2e",
+        "slotDot": "#b8a078",
+        "slotDotFilled": "#7a9e5a",
+        "slotRequired": "#ef5350",
+        "energyBarBg": "#3d4a2e",
+        "energyBarFill": "#7cb342",
+        "energyBarSecret": "#757575"
+      },
+      "sounds": {
+        "feelClick": {
+          "path": null,
+          "volume": 0.6
+        },
+        "cardDragStart": {
+          "path": null,
+          "volume": 0.45
+        },
+        "cardDropEvent": {
+          "path": null,
+          "volume": 0.5
+        },
+        "eventCompleteSpawn": {
+          "path": null,
+          "volume": 0.55
+        },
+        "backgroundMusic": {
+          "path": null,
+          "volume": 0.35
+        }
+      }
+    },
+    {
+      "alias": "dune-theme",
+      "name": "dune",
+      "background": {
+        "image": "/assets/backgrounds/forest-grounds-bg-02.png",
+        "overlayImage": "/assets/backgrounds/forest-grounds-bg-01.png",
+        "skyTop": "#c5dff0",
+        "skyMid": "#e8f0d8",
+        "ground": "#d4c4a8"
+      },
+      "borders": {
+        "stroke": "#a67c52",
+        "ready": "#e8a838",
+        "connector": "#6b4f2e",
+        "completedStroke": "#c45d7a",
+        "fill": "#8d6e4c"
+      },
+      "buttons": {
+        "fill": "#5c6bc0",
+        "stroke": "#7986cb",
+        "hover": "#7986cb",
+        "disabled": "#444444",
+        "labelText": "#ffffff"
+      },
+      "eventColors": {
+        "fill": "#8d6e4c",
+        "stroke": "#a67c52",
+        "completed": "#e891a8",
+        "completedStroke": "#c45d7a",
+        "flowerCenter": "#f5d76e",
+        "flowerPetal": "#e891a8",
+        "flowerPetalAlt": "#f0a8b8",
+        "ready": "#e8a838",
+        "connector": "#6b4f2e",
+        "slotDot": "#b8a078",
+        "slotDotFilled": "#7a9e5a",
+        "slotRequired": "#ef5350",
+        "energyBarBg": "#3d4a2e",
+        "energyBarFill": "#7cb342",
+        "energyBarSecret": "#757575"
+      },
+      "sounds": {
+        "feelClick": {
+          "path": "/storage/audio/theme-1785331301362-feelClick-1785331422269.mp3",
+          "volume": 0.6
+        },
+        "cardDragStart": {
+          "path": null,
+          "volume": 0.45
+        },
+        "cardDropEvent": {
+          "path": null,
+          "volume": 0.5
+        },
+        "eventCompleteSpawn": {
+          "path": null,
+          "volume": 0.55
+        },
+        "backgroundMusic": {
+          "path": "/storage/audio/dune-theme-backgroundMusic-1785331430045.mp3",
+          "volume": 0.35
+        }
+      }
+    }
+  ]
+}

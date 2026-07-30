@@ -53,6 +53,10 @@ module.exports = {
         directory: path.join(__dirname, 'storage'),
         publicPath: '/storage',
       },
+      {
+        directory: path.join(__dirname, 'assets'),
+        publicPath: '/assets',
+      },
     ],
     port: 8080,
     hot: true,

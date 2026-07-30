@@ -3,12 +3,33 @@ import { CARD_HEIGHT, CARD_WIDTH, EVENT_COLORS, EVENT_TREE } from '../config/gam
 import { getCardByAlias } from '../data/cards';
 import { resolveModifiedCardEnergy } from '../systems/resolveModifiedCardEnergy';
 import { CardAlias, EventCompletionCause, GameEventInstance } from '../types';
-import { drawFlower, drawSeed } from '../utils/gardenGraphics';
+import { ResolvedEventColors } from '../types/Theme';
+import { drawFlower, drawSeed, FlowerStyle } from '../utils/gardenGraphics';
 import { domBoxLabel, domText, DomTextHandle } from '../utils/domUi';
 
 const ENERGY_BAR_HEIGHT = 10;
 const ENERGY_BAR_PADDING_X = 8;
 const ENERGY_BAR_PADDING_TOP = 6;
+
+function defaultEventColors(): ResolvedEventColors {
+  return {
+    fill: EVENT_COLORS.fill,
+    stroke: EVENT_COLORS.stroke,
+    completed: EVENT_COLORS.completed,
+    completedStroke: EVENT_COLORS.completedStroke,
+    flowerCenter: EVENT_COLORS.flowerCenter,
+    flowerPetal: EVENT_COLORS.flowerPetal,
+    flowerPetalAlt: EVENT_COLORS.flowerPetalAlt,
+    ready: EVENT_COLORS.ready,
+    connector: EVENT_COLORS.connector,
+    slotDot: EVENT_COLORS.slotDot,
+    slotDotFilled: EVENT_COLORS.slotDotFilled,
+    slotRequired: EVENT_COLORS.slotRequired,
+    energyBarBg: EVENT_COLORS.energyBarBg,
+    energyBarFill: EVENT_COLORS.energyBarFill,
+    energyBarSecret: EVENT_COLORS.energyBarSecret,
+  };
+}
 
 export class EventCircle extends Phaser.GameObjects.Container {
   readonly eventData: GameEventInstance;
@@ -22,11 +43,15 @@ export class EventCircle extends Phaser.GameObjects.Container {
   private slotRequiredMarkers: DomTextHandle[] = [];
   private bloomProgress = 0;
   private blooming = false;
+  private themeColors: ResolvedEventColors = defaultEventColors();
 
-  constructor(scene: Phaser.Scene, eventData: GameEventInstance) {
+  constructor(scene: Phaser.Scene, eventData: GameEventInstance, themeColors?: ResolvedEventColors) {
     super(scene, eventData.x, eventData.y);
 
     this.eventData = eventData;
+    if (themeColors) {
+      this.themeColors = themeColors;
+    }
 
     this.bodyGfx = scene.add.graphics();
 
@@ -59,14 +84,14 @@ export class EventCircle extends Phaser.GameObjects.Container {
       barY,
       barWidth,
       ENERGY_BAR_HEIGHT,
-      EVENT_COLORS.energyBarBg
+      this.themeColors.energyBarBg
     );
     this.energyBarFill = scene.add.rectangle(
       -barWidth / 2,
       barY,
       barWidth,
       ENERGY_BAR_HEIGHT,
-      EVENT_COLORS.energyBarFill
+      this.themeColors.energyBarFill
     );
     this.energyBarFill.setOrigin(0, 0.5);
 
@@ -109,6 +134,22 @@ export class EventCircle extends Phaser.GameObjects.Container {
 
     this.setDepth(20);
     scene.add.existing(this);
+  }
+
+  applyTheme(themeColors: ResolvedEventColors): void {
+    this.themeColors = themeColors;
+    this.refreshSlotDots();
+    this.updateEnergyBar();
+    this.updateVisualState();
+  }
+
+  private getFlowerStyle(): FlowerStyle {
+    return {
+      petal: this.themeColors.flowerPetal,
+      petalAlt: this.themeColors.flowerPetalAlt,
+      center: this.themeColors.flowerCenter,
+      stroke: this.themeColors.completedStroke,
+    };
   }
 
   /** Fade/scale-in when a branch finishes growing to this seed. */
@@ -331,8 +372,8 @@ export class EventCircle extends Phaser.GameObjects.Container {
 
     for (const slot of this.getLocalTurnSlotPositions()) {
       const dot = scene.add.circle(slot.x, slot.y, radius);
-      dot.setStrokeStyle(2, EVENT_COLORS.slotDot);
-      dot.setFillStyle(EVENT_COLORS.slotDot, 0);
+      dot.setStrokeStyle(2, this.themeColors.slotDot);
+      dot.setFillStyle(this.themeColors.slotDot, 0);
       this.slotDots.push(dot);
       this.add(dot);
 
@@ -413,19 +454,19 @@ export class EventCircle extends Phaser.GameObjects.Container {
       const marker = this.slotRequiredMarkers[index];
 
       if (index < filled) {
-        dot.setFillStyle(EVENT_COLORS.slotDotFilled, 1);
-        dot.setStrokeStyle(2, EVENT_COLORS.slotDotFilled);
+        dot.setFillStyle(this.themeColors.slotDotFilled, 1);
+        dot.setStrokeStyle(2, this.themeColors.slotDotFilled);
         marker?.setVisible(false);
         return;
       }
 
       if (required) {
-        dot.setFillStyle(EVENT_COLORS.slotRequired, 0);
-        dot.setStrokeStyle(2, EVENT_COLORS.slotRequired);
+        dot.setFillStyle(this.themeColors.slotRequired, 0);
+        dot.setStrokeStyle(2, this.themeColors.slotRequired);
         marker?.setVisible(true);
       } else {
-        dot.setFillStyle(EVENT_COLORS.slotDot, 0);
-        dot.setStrokeStyle(2, EVENT_COLORS.slotDot);
+        dot.setFillStyle(this.themeColors.slotDot, 0);
+        dot.setStrokeStyle(2, this.themeColors.slotDot);
         marker?.setVisible(false);
       }
     });
@@ -464,7 +505,7 @@ export class EventCircle extends Phaser.GameObjects.Container {
     this.energyBarBg.setVisible(true);
 
     if (this.eventData.energyAmountSecret) {
-      this.energyBarBg.setFillStyle(EVENT_COLORS.energyBarSecret);
+      this.energyBarBg.setFillStyle(this.themeColors.energyBarSecret);
       this.energyBarFill.width = 0;
       this.energyBarFill.setVisible(false);
       this.energySecretText?.setVisible(true);
@@ -472,7 +513,7 @@ export class EventCircle extends Phaser.GameObjects.Container {
     }
 
     this.energySecretText?.setVisible(false);
-    this.energyBarBg.setFillStyle(EVENT_COLORS.energyBarBg);
+    this.energyBarBg.setFillStyle(this.themeColors.energyBarBg);
 
     const ratio = Phaser.Math.Clamp(
       this.eventData.progress / Math.max(1, this.eventData.energyAmount),
@@ -484,9 +525,9 @@ export class EventCircle extends Phaser.GameObjects.Container {
     this.energyBarFill.setVisible(true);
 
     if (this.isReadyToProcess()) {
-      this.energyBarFill.setFillStyle(EVENT_COLORS.ready);
+      this.energyBarFill.setFillStyle(this.themeColors.ready);
     } else {
-      this.energyBarFill.setFillStyle(EVENT_COLORS.energyBarFill);
+      this.energyBarFill.setFillStyle(this.themeColors.energyBarFill);
     }
   }
 
@@ -502,26 +543,26 @@ export class EventCircle extends Phaser.GameObjects.Container {
       const seedAlpha = Math.max(0, 1 - this.bloomProgress * 1.4);
       if (seedAlpha > 0.02) {
         drawSeed(this.bodyGfx, width, height, {
-          fill: EVENT_COLORS.fill,
+          fill: this.themeColors.fill,
           fillAlpha: seedAlpha * 0.85,
-          stroke: EVENT_COLORS.stroke,
+          stroke: this.themeColors.stroke,
         });
       }
 
       const flowerRadius =
         Math.max(width, height) * EVENT_TREE.flowerRadiusScale;
       const petalScale = Phaser.Math.Clamp(this.bloomProgress, 0.05, 1.12);
-      drawFlower(this.bodyGfx, flowerRadius, undefined, petalScale);
+      drawFlower(this.bodyGfx, flowerRadius, this.getFlowerStyle(), petalScale);
       return;
     }
 
     const showReady =
       this.isReadyToProcess() && !this.eventData.energyAmountSecret;
-    const stroke = showReady ? EVENT_COLORS.ready : EVENT_COLORS.stroke;
+    const stroke = showReady ? this.themeColors.ready : this.themeColors.stroke;
     const fillAlpha = this.isTurnLimitReached() ? 1 : 0.35;
 
     drawSeed(this.bodyGfx, width, height, {
-      fill: EVENT_COLORS.fill,
+      fill: this.themeColors.fill,
       fillAlpha,
       stroke,
     });

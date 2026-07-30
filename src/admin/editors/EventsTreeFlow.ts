@@ -28,7 +28,7 @@ import {
   type ReactElement,
 } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import type { EventSeedDefinition } from '../types';
+import type { GameEventDefinition } from '../types';
 
 const NODE_W = 200;
 const NODE_H = 64;
@@ -38,31 +38,22 @@ export type EventNodeData = {
   label: string;
   isBase?: boolean;
   kind: 'base' | 'branch' | 'leaf';
-  seedIndex: number;
+  eventIndex: number;
 };
 
 export interface EventsTreeFlowProps {
-  seed: EventSeedDefinition;
-  seedIndex: number;
-  onEditEvent: (seedIndex: number, eventIndex: number) => void;
-  onDeleteEvent: (seedIndex: number, eventIndex: number) => void;
-  onAddEvent: (seedIndex: number) => void;
-  onConnectEvents: (
-    seedIndex: number,
-    parentEventId: number,
-    childEventId: number
-  ) => void;
-  onDisconnectEvents: (
-    seedIndex: number,
-    parentEventId: number,
-    childEventId: number
-  ) => void;
+  events: GameEventDefinition[];
+  onEditEvent: (eventIndex: number) => void;
+  onDeleteEvent: (eventIndex: number) => void;
+  onAddEvent: () => void;
+  onConnectEvents: (parentEventId: number, childEventId: number) => void;
+  onDisconnectEvents: (parentEventId: number, childEventId: number) => void;
 }
 
-function buildEdgeMap(seed: EventSeedDefinition): Map<number, number[]> {
+function buildEdgeMap(events: GameEventDefinition[]): Map<number, number[]> {
   const children = new Map<number, number[]>();
-  const known = new Set(seed.events.map((e) => e.id));
-  for (const event of seed.events) {
+  const known = new Set(events.map((e) => e.id));
+  for (const event of events) {
     for (const result of event.results ?? []) {
       for (const action of result.actions) {
         if (action.type !== 'createEvent') continue;
@@ -78,10 +69,9 @@ function buildEdgeMap(seed: EventSeedDefinition): Map<number, number[]> {
 }
 
 function layoutElements(
-  seed: EventSeedDefinition,
-  seedIndex: number
+  events: GameEventDefinition[]
 ): { nodes: Node<EventNodeData>[]; edges: Edge[] } {
-  const children = buildEdgeMap(seed);
+  const children = buildEdgeMap(events);
   const outbound = new Set(children.keys());
 
   const g = new dagre.graphlib.Graph();
@@ -94,7 +84,7 @@ function layoutElements(
     marginy: 40,
   });
 
-  for (const event of seed.events) {
+  for (const event of events) {
     g.setNode(String(event.id), { width: NODE_W, height: NODE_H });
   }
   for (const [parentId, kids] of children) {
@@ -104,7 +94,7 @@ function layoutElements(
   }
   dagre.layout(g);
 
-  const nodes: Node<EventNodeData>[] = seed.events.map((event) => {
+  const nodes: Node<EventNodeData>[] = events.map((event, eventIndex) => {
     const pos = g.node(String(event.id));
     const hasOut = outbound.has(event.id);
     const kind: EventNodeData['kind'] = event.isBase
@@ -124,7 +114,7 @@ function layoutElements(
         label: event.label,
         isBase: event.isBase,
         kind,
-        seedIndex,
+        eventIndex,
       },
       sourcePosition: Position.Bottom,
       targetPosition: Position.Top,
@@ -189,8 +179,7 @@ const nodeTypes = { eventNode: EventFlowNode };
 
 function EventsTreeFlowInner(props: EventsTreeFlowProps): ReactElement {
   const {
-    seed,
-    seedIndex,
+    events,
     onEditEvent,
     onDeleteEvent,
     onAddEvent,
@@ -201,7 +190,7 @@ function EventsTreeFlowInner(props: EventsTreeFlowProps): ReactElement {
   const graphKey = useMemo(
     () =>
       JSON.stringify(
-        seed.events.map((e) => [
+        events.map((e) => [
           e.id,
           e.label,
           !!e.isBase,
@@ -212,13 +201,10 @@ function EventsTreeFlowInner(props: EventsTreeFlowProps): ReactElement {
           ),
         ])
       ),
-    [seed.events]
+    [events]
   );
 
-  const initial = useMemo(
-    () => layoutElements(seed, seedIndex),
-    [seed, seedIndex, graphKey]
-  );
+  const initial = useMemo(() => layoutElements(events), [events, graphKey]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initial.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges);
@@ -229,8 +215,8 @@ function EventsTreeFlowInner(props: EventsTreeFlowProps): ReactElement {
   }, [initial, setNodes, setEdges]);
 
   const findEventIndex = useCallback(
-    (eventId: number) => seed.events.findIndex((e) => e.id === eventId),
-    [seed.events]
+    (eventId: number) => events.findIndex((e) => e.id === eventId),
+    [events]
   );
 
   const onConnect: OnConnect = useCallback(
@@ -239,7 +225,7 @@ function EventsTreeFlowInner(props: EventsTreeFlowProps): ReactElement {
       if (connection.source === connection.target) return;
       const parentId = Number(connection.source);
       const childId = Number(connection.target);
-      onConnectEvents(seedIndex, parentId, childId);
+      onConnectEvents(parentId, childId);
       setEdges((eds) =>
         addEdge(
           {
@@ -262,45 +248,40 @@ function EventsTreeFlowInner(props: EventsTreeFlowProps): ReactElement {
         )
       );
     },
-    [onConnectEvents, seedIndex, setEdges]
+    [onConnectEvents, setEdges]
   );
 
   const onEdgesDelete: OnEdgesDelete = useCallback(
     (deleted) => {
       for (const edge of deleted) {
-        onDisconnectEvents(
-          seedIndex,
-          Number(edge.source),
-          Number(edge.target)
-        );
+        onDisconnectEvents(Number(edge.source), Number(edge.target));
       }
     },
-    [onDisconnectEvents, seedIndex]
+    [onDisconnectEvents]
   );
 
   const onNodesDelete: OnNodesDelete = useCallback(
     (deleted) => {
       for (const node of deleted) {
-        const eventId = Number(node.id);
-        const eventIndex = findEventIndex(eventId);
+        const eventIndex = findEventIndex(Number(node.id));
         if (eventIndex < 0) continue;
-        const event = seed.events[eventIndex];
+        const event = events[eventIndex];
         if (!event) continue;
         if (!confirm(`Really delete event "${event.label}"?`)) {
           continue;
         }
-        onDeleteEvent(seedIndex, eventIndex);
+        onDeleteEvent(eventIndex);
       }
     },
-    [findEventIndex, onDeleteEvent, seed.events, seedIndex]
+    [findEventIndex, onDeleteEvent, events]
   );
 
   const onNodeDoubleClick = useCallback(
     (_: MouseEvent, node: Node) => {
       const eventIndex = findEventIndex(Number(node.id));
-      if (eventIndex >= 0) onEditEvent(seedIndex, eventIndex);
+      if (eventIndex >= 0) onEditEvent(eventIndex);
     },
-    [findEventIndex, onEditEvent, seedIndex]
+    [findEventIndex, onEditEvent]
   );
 
   return createElement(
@@ -314,7 +295,7 @@ function EventsTreeFlowInner(props: EventsTreeFlowProps): ReactElement {
         {
           type: 'button',
           className: 'btn small',
-          onClick: () => onAddEvent(seedIndex),
+          onClick: () => onAddEvent(),
         },
         'Add event'
       ),

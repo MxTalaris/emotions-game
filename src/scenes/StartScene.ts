@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import { resolveSeed } from '../data/eventTemplates';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/gameConfig';
 import { PersonalityCloud } from '../entities/PersonalityCloud';
 import {
@@ -20,7 +19,6 @@ const MAX_SELECTED = 2;
 export class StartScene extends Phaser.Scene {
   private selectedPersonalities: PersonalityId[] = [];
   private selectionRings = new Map<PersonalityId, Phaser.GameObjects.Ellipse>();
-  private seedHintText!: DomTextHandle;
 
   constructor() {
     super({ key: 'StartScene' });
@@ -50,14 +48,8 @@ export class StartScene extends Phaser.Scene {
       color: '#7986cb',
     });
 
-    this.seedHintText = this.addFixedText(GAME_WIDTH / 2, 170, '', {
-      fontSize: '12px',
-      color: '#a5d6a7',
-    });
-
     this.createPlayButton(GAME_WIDTH / 2, 215);
     this.createPersonalityGallery(280);
-    this.refreshSeedHint();
   }
 
   private addFixedText(
@@ -115,7 +107,6 @@ export class StartScene extends Phaser.Scene {
     button.addEventListener('click', () => {
       const session = startGameSession(this.selectedPersonalities);
       this.scene.start('GameScene', {
-        seedId: session.seedId,
         selectedPersonalities: session.selectedPersonalities,
       });
     });
@@ -134,7 +125,7 @@ export class StartScene extends Phaser.Scene {
       this.addFixedText(
         GAME_WIDTH / 2,
         topY + 40,
-        'Nenhuma descoberta ainda. Jogue a seed basic para começar.',
+        'Nenhuma descoberta ainda. Jogue sem personalidades para começar.',
         {
           fontSize: '14px',
           color: '#5c6bc0',
@@ -173,7 +164,6 @@ export class StartScene extends Phaser.Scene {
     if (index >= 0) {
       this.selectedPersonalities.splice(index, 1);
       this.selectionRings.get(alias)?.setVisible(false);
-      this.refreshSeedHint();
       return;
     }
 
@@ -190,11 +180,5 @@ export class StartScene extends Phaser.Scene {
       ring.setPosition(x, y - 5);
       ring.setVisible(true);
     }
-    this.refreshSeedHint();
-  }
-
-  private refreshSeedHint(): void {
-    const seed = resolveSeed(this.selectedPersonalities);
-    this.seedHintText.setText(`Seed: ${seed.id}`);
   }
 }

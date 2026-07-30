@@ -80,6 +80,11 @@ export type EventAction =
     }
   | {
       type: 'endGame';
+    }
+  | {
+      type: 'changeTheme';
+      /** Theme alias from themes-catalog.json */
+      theme: string;
     };
 
 export interface EventResult {
@@ -116,6 +121,8 @@ export interface GameEventDefinition {
   /** Conditions that can break / fail the event when met. */
   dealBreakers?: DealBreaker[];
   isBase?: boolean;
+  /** Personalities that unlock this base event on the start screen. */
+  personalities?: PersonalityId[];
   /** Conditional follow-up actions when the event completes. */
   results?: EventResult[];
   /** Conditional emotion grants resolved on Sentir. */

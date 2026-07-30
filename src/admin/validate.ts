@@ -1,10 +1,12 @@
 import {
   EmotionsCatalog,
   EventAction,
-  EventSeedsFile,
+  EventTemplatesFile,
   PersonalityEntry,
   SOUND_ACTION_IDS,
   SoundsCatalog,
+  ThemeEntry,
+  ThemesCatalogFile,
 } from './types';
 
 export function collectCardAliases(catalog: EmotionsCatalog): Set<string> {
@@ -23,20 +25,8 @@ export function collectPersonalityIds(
   return new Set(personalities.map((p) => p.id));
 }
 
-export function collectEventIds(seeds: EventSeedsFile): Set<string> {
-  const ids = new Set<string>();
-  for (const seed of seeds.seeds) {
-    for (const event of seed.events) {
-      ids.add(String(event.id));
-    }
-  }
-  return ids;
-}
-
-export function collectSeedEventIds(
-  seed: EventSeedsFile['seeds'][number]
-): Set<string> {
-  return new Set(seed.events.map((event) => String(event.id)));
+export function collectEventIds(templates: EventTemplatesFile): Set<string> {
+  return new Set(templates.events.map((event) => String(event.id)));
 }
 
 function asAliasList(value: string | string[]): string[] {
@@ -117,7 +107,8 @@ function validateAction(
   path: string,
   cardAliases: Set<string>,
   personalityIds: Set<string>,
-  eventIds: Set<string>
+  eventIds: Set<string>,
+  themeAliases: Set<string>
 ): string[] {
   const errors: string[] = [];
 
@@ -126,7 +117,7 @@ function validateAction(
       errors.push(`${path}: createEvent.event is required`);
     } else if (!eventIds.has(action.event)) {
       errors.push(
-        `${path}: createEvent.event "${action.event}" not found in this seed`
+        `${path}: createEvent.event "${action.event}" not found in catalog`
       );
     }
     const ref = action.personality;
@@ -149,50 +140,52 @@ function validateAction(
         `${path}: generatePersonality "${action.personality}" not in catalog`
       );
     }
+  } else if (action.type === 'changeTheme') {
+    if (!action.theme?.trim()) {
+      errors.push(`${path}: changeTheme.theme is required`);
+    } else if (!themeAliases.has(action.theme)) {
+      errors.push(
+        `${path}: changeTheme.theme "${action.theme}" not found in themes catalog`
+      );
+    }
   }
 
   return errors;
 }
 
-export function validateEventSeeds(
-  seedsFile: EventSeedsFile,
+export function validateEventTemplates(
+  templatesFile: EventTemplatesFile,
   cardAliases: Set<string>,
-  personalityIds: Set<string>
+  personalityIds: Set<string>,
+  themeAliases: Set<string> = new Set(['basic'])
 ): string[] {
   const errors: string[] = [];
-  const seedIds = new Set<string>();
+  const eventIdSeen = new Set<number>();
+  const eventIds = collectEventIds(templatesFile);
 
-  seedsFile.seeds.forEach((seed, si) => {
-    const seedPath = `seeds[${si}] (${seed.id || '?'})`;
-    if (!seed.id?.trim()) {
-      errors.push(`${seedPath}: seed id is required`);
-    } else if (seedIds.has(seed.id)) {
-      errors.push(`${seedPath}: duplicate seed id "${seed.id}"`);
-    } else {
-      seedIds.add(seed.id);
-    }
-
-    seed.personalities.forEach((pid, pi) => {
-      if (!personalityIds.has(pid)) {
-        errors.push(
-          `${seedPath}.personalities[${pi}]: unknown personality "${pid}"`
-        );
-      }
-    });
-
-    const seedEventIds = collectSeedEventIds(seed);
-    const eventIdSeen = new Set<number>();
-    seed.events.forEach((event, ei) => {
-      const path = `${seedPath}.events[${ei}]`;
+  templatesFile.events.forEach((event, ei) => {
+      const path = `events[${ei}]`;
       if (typeof event.id !== 'number' || Number.isNaN(event.id)) {
         errors.push(`${path}: id must be a number`);
       } else if (eventIdSeen.has(event.id)) {
-        errors.push(`${path}: duplicate event id ${event.id} in this seed`);
+        errors.push(`${path}: duplicate event id ${event.id}`);
       } else {
         eventIdSeen.add(event.id);
       }
       if (!event.label?.trim()) {
         errors.push(`${path}: label is required`);
+      }
+
+      if (event.isBase) {
+        (event.personalities ?? []).forEach((pid, pi) => {
+          if (!personalityIds.has(pid)) {
+            errors.push(
+              `${path}.personalities[${pi}]: unknown personality "${pid}"`
+            );
+          }
+        });
+      } else if (event.personalities?.length) {
+        errors.push(`${path}: personalities are only allowed on base events`);
       }
 
       if (event.modifiers?.cards) {
@@ -233,7 +226,8 @@ export function validateEventSeeds(
               `${rPath}.actions[${ai}]`,
               cardAliases,
               personalityIds,
-              seedEventIds
+              eventIds,
+              themeAliases
             )
           );
         });
@@ -255,7 +249,6 @@ export function validateEventSeeds(
           }
         }
       });
-    });
   });
 
   return errors;
@@ -278,6 +271,45 @@ export function validateSoundsCatalog(catalog: SoundsCatalog): string[] {
     } else if (entry.volume < 0 || entry.volume > 1) {
       errors.push(`${id}.volume: must be between 0 and 1`);
     }
+  }
+
+  return errors;
+}
+
+export function validateThemesCatalog(catalog: ThemesCatalogFile): string[] {
+  const errors: string[] = [];
+  const aliases = new Set<string>();
+
+  if (!catalog.defaultTheme?.trim()) {
+    errors.push('defaultTheme is required');
+  }
+
+  if (!Array.isArray(catalog.themes) || catalog.themes.length === 0) {
+    errors.push('At least one theme is required');
+    return errors;
+  }
+
+  catalog.themes.forEach((theme: ThemeEntry, index) => {
+    const path = `themes[${index}]`;
+    if (!theme.alias?.trim()) {
+      errors.push(`${path}: alias is required`);
+    } else if (aliases.has(theme.alias)) {
+      errors.push(`${path}: duplicate alias "${theme.alias}"`);
+    } else {
+      aliases.add(theme.alias);
+    }
+
+    if (!theme.name?.trim()) {
+      errors.push(`${path}: name is required`);
+    }
+
+    errors.push(...validateSoundsCatalog(theme.sounds ?? ({} as SoundsCatalog)));
+  });
+
+  if (catalog.defaultTheme?.trim() && !aliases.has(catalog.defaultTheme)) {
+    errors.push(
+      `defaultTheme "${catalog.defaultTheme}" not found among theme aliases`
+    );
   }
 
   return errors;
