@@ -5,7 +5,8 @@
       "alias": "basic",
       "name": "Basic",
       "background": {
-        "image": null,
+        "image": "/assets/backgrounds/forest-grounds-bg-02.png",
+        "overlayImage": "/assets/backgrounds/forest-grounds-bg-01.png",
         "skyTop": "#c5dff0",
         "skyMid": "#e8f0d8",
         "ground": "#d4c4a8"
@@ -68,7 +69,8 @@
       "alias": "dune-theme",
       "name": "dune",
       "background": {
-        "image": null,
+        "image": "/assets/backgrounds/forest-grounds-bg-02.png",
+        "overlayImage": "/assets/backgrounds/forest-grounds-bg-01.png",
         "skyTop": "#c5dff0",
         "skyMid": "#e8f0d8",
         "ground": "#d4c4a8"

@@ -11,7 +11,7 @@ import {
   addPersonalityToSession,
   loadGameSession,
 } from '../systems/gameSession';
-import { getSeedById, resolveSeed } from '../data/eventTemplates';
+import { eventTemplates } from '../data/eventTemplates';
 import { resolveRewardCards } from '../systems/grantRewardCards';
 import { resolveEventOutputEmotions } from '../systems/resolveEventOutputs';
 import {
@@ -25,6 +25,7 @@ import {
 import { TurnManager } from '../systems/TurnManager';
 import { SoundEffects } from '../systems/SoundEffects';
 import {
+  BackgroundParallaxLayer,
   drawThemeBackground,
   loadThemeBackgroundImage,
   loadThemeBgm,
@@ -122,8 +123,8 @@ export class GameScene extends Phaser.Scene {
   private soundEffects!: SoundEffects;
   private themeManager!: ThemeManager;
   private backgroundObjects: Phaser.GameObjects.GameObject[] = [];
+  private backgroundParallaxLayers: BackgroundParallaxLayer[] = [];
   private currentBgmPath: string | null = null;
-  private launchSeedId: string | null = null;
   private launchSelectedPersonalities: PersonalityId[] = [];
 
   constructor() {
@@ -131,10 +132,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   init(data: {
-    seedId?: string;
     selectedPersonalities?: PersonalityId[];
   } = {}): void {
-    this.launchSeedId = data.seedId ?? null;
     this.launchSelectedPersonalities = Array.isArray(data.selectedPersonalities)
       ? data.selectedPersonalities
       : [];
@@ -171,12 +170,8 @@ export class GameScene extends Phaser.Scene {
       this.launchSelectedPersonalities.length > 0
         ? this.launchSelectedPersonalities
         : session.selectedPersonalities;
-    const seedId = this.launchSeedId ?? session.seedId;
-    const seed =
-      (seedId ? getSeedById(seedId) : undefined) ??
-      resolveSeed(selectedPersonalities);
 
-    this.eventManager = new EventManager(seed);
+    this.eventManager = new EventManager(eventTemplates, selectedPersonalities);
     this.turnManager = new TurnManager();
     this.treeScrollY = 0;
     this.treeScrollX = 0;
@@ -189,7 +184,10 @@ export class GameScene extends Phaser.Scene {
     this.cardPreviewPopup = null;
     this.bgm = null;
     this.musicEnabled = false;
+    this.soundEffects.setEnabled(false);
+    this.sound.mute = true;
     this.backgroundObjects = [];
+    this.backgroundParallaxLayers = [];
 
     this.applyThemeBackground();
 
@@ -224,23 +222,39 @@ export class GameScene extends Phaser.Scene {
       obj.destroy();
     }
     this.backgroundObjects = [];
+    this.backgroundParallaxLayers = [];
 
     const theme = this.themeManager.getActive();
     const draw = () => {
-      this.backgroundObjects = drawThemeBackground(
+      const result = drawThemeBackground(
         this,
         GAME_WIDTH,
         GAME_HEIGHT,
         theme
       );
+      this.backgroundObjects = result.objects;
+      this.backgroundParallaxLayers = result.parallaxLayers;
+      this.updateBackgroundParallax();
     };
 
-    if (reloadImage && theme.background.image) {
+    if (
+      reloadImage &&
+      (theme.background.image || theme.background.overlayImage)
+    ) {
       loadThemeBackgroundImage(this, theme, draw);
       return;
     }
 
     draw();
+  }
+
+  private updateBackgroundParallax(): void {
+    for (const layer of this.backgroundParallaxLayers) {
+      layer.image.setPosition(
+        GAME_WIDTH / 2 + this.treeScrollX * layer.factorX,
+        GAME_HEIGHT / 2 + this.treeScrollY * layer.factorY
+      );
+    }
   }
 
   private applyThemeVisuals(): void {
@@ -281,6 +295,8 @@ export class GameScene extends Phaser.Scene {
       });
       if (this.musicEnabled || wasPlaying) {
         this.musicEnabled = true;
+        this.soundEffects.setEnabled(true);
+        this.sound.mute = false;
         this.sound.unlock();
         this.bgm.play();
       }
@@ -318,6 +334,8 @@ export class GameScene extends Phaser.Scene {
 
   private setMusicEnabled(enabled: boolean): void {
     this.musicEnabled = enabled;
+    this.soundEffects.setEnabled(enabled);
+    this.sound.mute = !enabled;
 
     if (!this.bgm) return;
 
@@ -472,6 +490,7 @@ export class GameScene extends Phaser.Scene {
   private applyTreeTransform(): void {
     this.treeLayer.setPosition(this.treeScrollX, this.treeScrollY);
     this.treeLayer.setScale(this.treeZoom);
+    this.updateBackgroundParallax();
   }
 
   private clampTreeScroll(): void {

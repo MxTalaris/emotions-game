@@ -448,7 +448,7 @@ body {
   gap: 16px;
 }
 
-.tree-seed-panel {
+.tree-panel {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);

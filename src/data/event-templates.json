@@ -1,1674 +1,1665 @@
 {
-  "seeds": [
+  "events": [
     {
-      "id": "basic",
-      "personalities": [],
-      "events": [
+      "id": 1,
+      "label": "Conversa difícil",
+      "energyAmount": 30,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "isBase": true,
+      "modifiers": {
+        "suits": {
+          "anger": 1.5,
+          "sadness": 1.5,
+          "fear": 1.5,
+          "disgust": 1.5,
+          "joy": 0.5
+        },
+        "cards": {
+          "anger-rage": 0.5
+        }
+      },
+      "dealBreakers": [
         {
           "id": 1,
-          "label": "Conversa difícil",
-          "energyAmount": 30,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "isBase": true,
-          "modifiers": {
-            "suits": {
-              "anger": 1.5,
-              "sadness": 1.5,
-              "fear": 1.5,
-              "disgust": 1.5,
-              "joy": 0.5
-            },
-            "cards": {
-              "anger-rage": 0.5
+          "alias": "anger-rage-break",
+          "suitQuantities": [
+            {
+              "suitId": "anger",
+              "quantity": 2
             }
+          ],
+          "suitEnergies": [],
+          "cardEmotions": [
+            "anger-rage"
+          ]
+        }
+      ],
+      "results": [
+        {
+          "type": {
+            "type": "default"
           },
-          "dealBreakers": [
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
             {
-              "id": 1,
-              "alias": "anger-rage-break",
-              "suitQuantities": [
-                {
-                  "suitId": "anger",
-                  "quantity": 2
-                }
-              ],
-              "suitEnergies": [],
-              "cardEmotions": [
-                "anger-rage"
-              ]
-            }
-          ],
-          "results": [
-            {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "3",
-                  "delay": 0
-                },
-                {
-                  "type": "generatePersonality",
-                  "personality": "warm"
-                },
-                {
-                  "type": "endGame"
-                }
-              ]
+              "type": "createEvent",
+              "personality": "all",
+              "event": "3",
+              "delay": 0
             },
             {
-              "type": {
-                "type": "majority",
-                "parameters": "disgust"
-              },
-              "outputOverride": true,
-              "exclusive": true,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "3",
-                  "delay": 0
-                },
-                {
-                  "type": "createEmotion",
-                  "emotions": "apathy-basic"
-                }
-              ]
-            }
-          ],
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": "input"
+              "type": "generatePersonality",
+              "personality": "warm"
             },
             {
-              "input": {
-                "type": "cardEmotions",
-                "cardEmotions": [
-                  "anger-rage"
-                ]
-              },
-              "exclusive": true,
-              "priority": 10,
-              "outputEmotions": "anger-frustration"
+              "type": "endGame"
+            }
+          ]
+        },
+        {
+          "type": {
+            "type": "majority",
+            "parameters": "disgust"
+          },
+          "outputOverride": true,
+          "exclusive": true,
+          "priority": 0,
+          "actions": [
+            {
+              "type": "createEvent",
+              "personality": "all",
+              "event": "3",
+              "delay": 0
+            },
+            {
+              "type": "createEmotion",
+              "emotions": "apathy-basic"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": "input"
+        },
+        {
+          "input": {
+            "type": "cardEmotions",
+            "cardEmotions": [
+              "anger-rage"
+            ]
+          },
+          "exclusive": true,
+          "priority": 10,
+          "outputEmotions": "anger-frustration"
+        }
+      ],
+      "description": "OI eu sou o Kevin e achei Dia D mais do que 7/10, ele fala sobre ouvir",
+      "personalities": []
+    },
+    {
+      "id": 2,
+      "label": "Momento de calma",
+      "energyAmount": 30,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 3,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "isBase": true,
+      "modifiers": {
+        "suits": {
+          "joy": 1.5,
+          "anger": 0.5,
+          "sadness": 0.5,
+          "fear": 0.5,
+          "disgust": 0.5
+        }
+      },
+      "dealBreakers": [
+        {
+          "id": 1,
+          "alias": "anger-energy-break",
+          "suitQuantities": [],
+          "suitEnergies": [
+            {
+              "suitId": "anger",
+              "total": 40
             }
           ],
-          "description": "OI eu sou o Kevin e achei Dia D mais do que 7/10, ele fala sobre ouvir"
+          "cardEmotions": []
         },
         {
           "id": 2,
-          "label": "Momento de calma",
-          "energyAmount": 30,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 3,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "isBase": true,
-          "modifiers": {
-            "suits": {
-              "joy": 1.5,
-              "anger": 0.5,
-              "sadness": 0.5,
-              "fear": 0.5,
-              "disgust": 0.5
+          "alias": "sad-presence-break",
+          "suitQuantities": [
+            {
+              "suitId": "sadness",
+              "quantity": 1
             }
+          ],
+          "suitEnergies": [],
+          "cardEmotions": [
+            "sad-basic"
+          ]
+        }
+      ],
+      "results": [
+        {
+          "type": {
+            "type": "default"
           },
-          "dealBreakers": [
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
             {
-              "id": 1,
-              "alias": "anger-energy-break",
-              "suitQuantities": [],
-              "suitEnergies": [
-                {
-                  "suitId": "anger",
-                  "total": 40
-                }
-              ],
-              "cardEmotions": []
+              "type": "createEvent",
+              "personality": "all",
+              "event": "5",
+              "delay": 0
             },
             {
-              "id": 2,
-              "alias": "sad-presence-break",
-              "suitQuantities": [
-                {
-                  "suitId": "sadness",
-                  "quantity": 1
-                }
-              ],
-              "suitEnergies": [],
-              "cardEmotions": [
-                "sad-basic"
-              ]
-            }
-          ],
-          "results": [
-            {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "5",
-                  "delay": 0
-                },
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "6",
-                  "delay": 0
-                },
-                {
-                  "type": "changeTheme",
-                  "theme": "dune-theme"
-                }
-              ]
-            }
-          ],
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": [
-                "anger-rage",
-                "joy-fun"
-              ]
+              "type": "createEvent",
+              "personality": "all",
+              "event": "6",
+              "delay": 0
             },
             {
-              "input": {
-                "type": "suitQuantities",
-                "suitQuantities": [
-                  {
-                    "suitId": "joy",
-                    "quantity": 1
-                  }
-                ]
-              },
-              "exclusive": false,
-              "priority": 1,
-              "outputEmotions": "joy-gratitude"
+              "type": "changeTheme",
+              "theme": "dune-theme"
             }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": [
+            "anger-rage",
+            "joy-fun"
           ]
         },
         {
-          "id": 3,
-          "label": "Conflito no trabalho",
-          "energyAmount": 60,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "dealBreakers": [
-            {
-              "id": 1,
-              "alias": "fear-disgust-break",
-              "suitQuantities": [
-                {
-                  "suitId": "fear",
-                  "quantity": 1
-                }
-              ],
-              "suitEnergies": [
-                {
-                  "suitId": "disgust",
-                  "total": 30
-                }
-              ],
-              "cardEmotions": [
-                "disgust-basic"
-              ]
-            }
-          ],
-          "results": [
-            {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "4",
-                  "delay": 0
-                },
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "7",
-                  "delay": 0
-                },
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "8",
-                  "delay": 0
-                }
-              ]
-            }
-          ],
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": [
-                "sad-basic",
-                "disgust-basic"
-              ]
-            }
-          ]
-        },
+          "input": {
+            "type": "suitQuantities",
+            "suitQuantities": [
+              {
+                "suitId": "joy",
+                "quantity": 1
+              }
+            ]
+          },
+          "exclusive": false,
+          "priority": 1,
+          "outputEmotions": "joy-gratitude"
+        }
+      ],
+      "personalities": []
+    },
+    {
+      "id": 3,
+      "label": "Conflito no trabalho",
+      "energyAmount": 60,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "dealBreakers": [
         {
-          "id": 4,
-          "label": "Reunião de família",
-          "energyAmount": 45,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "dealBreakers": [
+          "id": 1,
+          "alias": "fear-disgust-break",
+          "suitQuantities": [
             {
-              "id": 1,
-              "alias": "hostile-cards-break",
-              "suitQuantities": [],
-              "suitEnergies": [],
-              "cardEmotions": [
-                "anger-basic",
-                "disgust-basic"
-              ]
+              "suitId": "fear",
+              "quantity": 1
             }
           ],
-          "results": [
+          "suitEnergies": [
             {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "9",
-                  "delay": 0
-                }
-              ]
+              "suitId": "disgust",
+              "total": 30
             }
           ],
-          "outputs": [
+          "cardEmotions": [
+            "disgust-basic"
+          ]
+        }
+      ],
+      "results": [
+        {
+          "type": {
+            "type": "default"
+          },
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
             {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": [
-                "joy-basic",
-                "sad-basic"
-              ]
+              "type": "createEvent",
+              "personality": "all",
+              "event": "4",
+              "delay": 0
             },
             {
-              "input": {
-                "type": "suitEnergies",
-                "suitEnergies": [
-                  {
-                    "suitId": "joy",
-                    "total": 20
-                  }
-                ]
-              },
-              "exclusive": true,
-              "priority": 5,
-              "outputEmotions": [
-                "joy-acceptance",
-                "joy-mellow"
-              ]
-            }
-          ]
-        },
-        {
-          "id": 5,
-          "label": "Passeio no parque",
-          "energyAmount": 25,
-          "energyAmountSecret": true,
-          "cardsPerTurn": 1,
-          "autoComplete": 2,
-          "autoCompleteSecret": true,
-          "cardsRequired": false,
-          "results": [
-            {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "10",
-                  "delay": 0
-                },
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "11",
-                  "delay": 0
-                }
-              ]
-            }
-          ],
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": "joy-basic"
-            }
-          ]
-        },
-        {
-          "id": 6,
-          "label": "Surpresa agradável",
-          "energyAmount": 35,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "results": [
-            {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "12",
-                  "delay": 0
-                }
-              ]
-            }
-          ],
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": [
-                "joy-basic",
-                "joy-fun"
-              ]
-            }
-          ]
-        },
-        {
-          "id": 7,
-          "label": "Feedback duro",
-          "energyAmount": 40,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "dealBreakers": [
-            {
-              "id": 1,
-              "alias": "joy-fear-break",
-              "suitQuantities": [
-                {
-                  "suitId": "joy",
-                  "quantity": 2
-                }
-              ],
-              "suitEnergies": [
-                {
-                  "suitId": "fear",
-                  "total": 20
-                }
-              ],
-              "cardEmotions": []
-            }
-          ],
-          "results": [
-            {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "16",
-                  "delay": 0
-                }
-              ]
-            }
-          ],
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": [
-                "sad-basic",
-                "anger-basic"
-              ]
+              "type": "createEvent",
+              "personality": "all",
+              "event": "7",
+              "delay": 0
             },
             {
-              "input": {
-                "type": "cardEmotions",
-                "cardEmotions": [
-                  "fear-anxiety"
-                ]
-              },
-              "exclusive": true,
-              "priority": 8,
-              "outputEmotions": "anger-frustration"
-            },
-            {
-              "input": {
-                "type": "suitQuantities",
-                "suitQuantities": [
-                  {
-                    "suitId": "anger",
-                    "quantity": 1
-                  }
-                ]
-              },
-              "exclusive": true,
-              "priority": 3,
-              "outputEmotions": "sad-bitterness"
+              "type": "createEvent",
+              "personality": "all",
+              "event": "8",
+              "delay": 0
             }
           ]
-        },
+        }
+      ],
+      "outputs": [
         {
-          "id": 8,
-          "label": "Mudança de equipe",
-          "energyAmount": 50,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "dealBreakers": [
-            {
-              "id": 1,
-              "alias": "apathy-break",
-              "suitQuantities": [
-                {
-                  "suitId": "apathy",
-                  "quantity": 1
-                }
-              ],
-              "suitEnergies": [],
-              "cardEmotions": [
-                "apathy-basic"
-              ]
-            }
-          ],
-          "results": [
-            {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "13",
-                  "delay": 0
-                },
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "14",
-                  "delay": 0
-                }
-              ]
-            }
-          ],
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": [
-                "fear-basic",
-                "disgust-basic"
-              ]
-            }
-          ]
-        },
-        {
-          "id": 9,
-          "label": "Despedida",
-          "energyAmount": 40,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "results": [
-            {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "15",
-                  "delay": 0
-                }
-              ]
-            }
-          ],
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": [
-                "sad-basic",
-                "anger-basic"
-              ]
-            }
-          ]
-        },
-        {
-          "id": 10,
-          "label": "Encontro casual",
-          "energyAmount": 30,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": [
-                "joy-basic",
-                "joy-fun"
-              ]
-            }
-          ]
-        },
-        {
-          "id": 11,
-          "label": "Chuva inesperada",
-          "energyAmount": 20,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 3,
-          "autoCompleteSecret": true,
-          "cardsRequired": false,
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": "fear-fright"
-            }
-          ]
-        },
-        {
-          "id": 12,
-          "label": "Celebração",
-          "energyAmount": 40,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": [
-                "joy-bliss",
-                "anger-eustress"
-              ]
-            }
-          ]
-        },
-        {
-          "id": 13,
-          "label": "Novo projeto",
-          "energyAmount": 55,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": [
-                "joy-eager",
-                "fear-anxiety"
-              ]
-            }
-          ]
-        },
-        {
-          "id": 14,
-          "label": "Pedido de ajuda",
-          "energyAmount": 35,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": [
-                "sad-loss",
-                "joy-acceptance"
-              ]
-            }
-          ]
-        },
-        {
-          "id": 15,
-          "label": "Confrontação",
-          "energyAmount": 40,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 2,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "dealBreakers": [
-            {
-              "id": 1,
-              "alias": "anger-rage-break",
-              "suitQuantities": [
-                {
-                  "suitId": "anger",
-                  "quantity": 1
-                }
-              ],
-              "suitEnergies": [],
-              "cardEmotions": [
-                "anger-rage"
-              ]
-            }
-          ],
-          "results": [
-            {
-              "type": {
-                "type": "dealbreaker",
-                "parameters": "anger-rage-break"
-              },
-              "outputOverride": true,
-              "exclusive": true,
-              "priority": 20,
-              "actions": [
-                {
-                  "type": "createEmotion",
-                  "emotions": [
-                    "anger-frustration",
-                    "anger-basic"
-                  ]
-                },
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "17",
-                  "delay": 0
-                }
-              ]
-            },
-            {
-              "type": {
-                "type": "majority",
-                "parameters": "joy"
-              },
-              "outputOverride": false,
-              "exclusive": true,
-              "priority": 10,
-              "actions": [
-                {
-                  "type": "createEmotion",
-                  "emotions": [
-                    "joy-bliss",
-                    "joy-gratitude"
-                  ]
-                },
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "18",
-                  "delay": 0
-                }
-              ]
-            },
-            {
-              "type": {
-                "type": "specific",
-                "parameters": "fear-anxiety"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 5,
-              "actions": [
-                {
-                  "type": "createEmotion",
-                  "emotions": "fear-fright"
-                }
-              ]
-            },
-            {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "createEmotion",
-                  "emotions": [
-                    "sad-basic",
-                    "fear-basic"
-                  ]
-                }
-              ]
-            }
-          ],
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": [
-                "anger-basic",
-                "sad-basic"
-              ]
-            }
-          ]
-        },
-        {
-          "id": 16,
-          "label": "Negociação tensa",
-          "energyAmount": 45,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 2,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "dealBreakers": [
-            {
-              "id": 1,
-              "alias": "apathy-break",
-              "suitQuantities": [
-                {
-                  "suitId": "apathy",
-                  "quantity": 1
-                }
-              ],
-              "suitEnergies": [],
-              "cardEmotions": [
-                "apathy-basic"
-              ]
-            }
-          ],
-          "results": [
-            {
-              "type": {
-                "type": "dealbreaker",
-                "parameters": "apathy-break"
-              },
-              "outputOverride": true,
-              "exclusive": true,
-              "priority": 20,
-              "actions": [
-                {
-                  "type": "createEmotion",
-                  "emotions": "apathy-basic"
-                },
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "19",
-                  "delay": 0
-                }
-              ]
-            },
-            {
-              "type": {
-                "type": "majority",
-                "parameters": "sadness"
-              },
-              "outputOverride": false,
-              "exclusive": true,
-              "priority": 10,
-              "actions": [
-                {
-                  "type": "createEmotion",
-                  "emotions": [
-                    "sad-despair",
-                    "sad-loss"
-                  ]
-                }
-              ]
-            },
-            {
-              "type": {
-                "type": "specific",
-                "parameters": "anger-rage"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 5,
-              "actions": [
-                {
-                  "type": "createEmotion",
-                  "emotions": [
-                    "anger-frustration",
-                    "fear-basic"
-                  ]
-                }
-              ]
-            },
-            {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "19",
-                  "delay": 0
-                }
-              ]
-            }
-          ],
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": [
-                "fear-basic",
-                "anger-basic"
-              ]
-            }
-          ]
-        },
-        {
-          "id": 17,
-          "label": "Ruptura",
-          "energyAmount": 30,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": "anger-basic"
-            }
-          ]
-        },
-        {
-          "id": 18,
-          "label": "Reconciliação",
-          "energyAmount": 30,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "results": [
-            {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "generatePersonality",
-                  "personality": "warm"
-                },
-                {
-                  "type": "endGame"
-                }
-              ]
-            }
-          ],
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": "joy-acceptance"
-            }
-          ]
-        },
-        {
-          "id": 19,
-          "label": "Impasse",
-          "energyAmount": 25,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 2,
-          "autoCompleteSecret": false,
-          "cardsRequired": false,
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": "apathy-basic"
-            }
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": [
+            "sad-basic",
+            "disgust-basic"
           ]
         }
       ]
     },
     {
-      "id": "warm",
-      "personalities": [
-        "warm"
-      ],
-      "events": [
+      "id": 4,
+      "label": "Reunião de família",
+      "energyAmount": 45,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "dealBreakers": [
         {
           "id": 1,
-          "label": "Abraço inesperado",
-          "energyAmount": 25,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "isBase": true,
-          "modifiers": {
-            "suits": {
-              "joy": 1.5,
-              "sadness": 0.5,
-              "fear": 0.5
-            }
+          "alias": "hostile-cards-break",
+          "suitQuantities": [],
+          "suitEnergies": [],
+          "cardEmotions": [
+            "anger-basic",
+            "disgust-basic"
+          ]
+        }
+      ],
+      "results": [
+        {
+          "type": {
+            "type": "default"
           },
-          "results": [
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
             {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "generatePersonality",
-                  "personality": "guarded"
-                },
-                {
-                  "type": "endGame"
-                }
-              ]
+              "type": "createEvent",
+              "personality": "all",
+              "event": "9",
+              "delay": 0
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": [
+            "joy-basic",
+            "sad-basic"
+          ]
+        },
+        {
+          "input": {
+            "type": "suitEnergies",
+            "suitEnergies": [
+              {
+                "suitId": "joy",
+                "total": 20
+              }
+            ]
+          },
+          "exclusive": true,
+          "priority": 5,
+          "outputEmotions": [
+            "joy-acceptance",
+            "joy-mellow"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "label": "Passeio no parque",
+      "energyAmount": 25,
+      "energyAmountSecret": true,
+      "cardsPerTurn": 1,
+      "autoComplete": 2,
+      "autoCompleteSecret": true,
+      "cardsRequired": false,
+      "results": [
+        {
+          "type": {
+            "type": "default"
+          },
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
+            {
+              "type": "createEvent",
+              "personality": "all",
+              "event": "10",
+              "delay": 0
+            },
+            {
+              "type": "createEvent",
+              "personality": "all",
+              "event": "11",
+              "delay": 0
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": "joy-basic"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "label": "Surpresa agradável",
+      "energyAmount": 35,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "results": [
+        {
+          "type": {
+            "type": "default"
+          },
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
+            {
+              "type": "createEvent",
+              "personality": "all",
+              "event": "12",
+              "delay": 0
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": [
+            "joy-basic",
+            "joy-fun"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "label": "Feedback duro",
+      "energyAmount": 40,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "dealBreakers": [
+        {
+          "id": 1,
+          "alias": "joy-fear-break",
+          "suitQuantities": [
+            {
+              "suitId": "joy",
+              "quantity": 2
             }
           ],
-          "outputs": [
+          "suitEnergies": [
             {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": "joy-basic"
+              "suitId": "fear",
+              "total": 20
+            }
+          ],
+          "cardEmotions": []
+        }
+      ],
+      "results": [
+        {
+          "type": {
+            "type": "default"
+          },
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
+            {
+              "type": "createEvent",
+              "personality": "all",
+              "event": "16",
+              "delay": 0
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": [
+            "sad-basic",
+            "anger-basic"
+          ]
+        },
+        {
+          "input": {
+            "type": "cardEmotions",
+            "cardEmotions": [
+              "fear-anxiety"
+            ]
+          },
+          "exclusive": true,
+          "priority": 8,
+          "outputEmotions": "anger-frustration"
+        },
+        {
+          "input": {
+            "type": "suitQuantities",
+            "suitQuantities": [
+              {
+                "suitId": "anger",
+                "quantity": 1
+              }
+            ]
+          },
+          "exclusive": true,
+          "priority": 3,
+          "outputEmotions": "sad-bitterness"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "label": "Mudança de equipe",
+      "energyAmount": 50,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "dealBreakers": [
+        {
+          "id": 1,
+          "alias": "apathy-break",
+          "suitQuantities": [
+            {
+              "suitId": "apathy",
+              "quantity": 1
+            }
+          ],
+          "suitEnergies": [],
+          "cardEmotions": [
+            "apathy-basic"
+          ]
+        }
+      ],
+      "results": [
+        {
+          "type": {
+            "type": "default"
+          },
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
+            {
+              "type": "createEvent",
+              "personality": "all",
+              "event": "13",
+              "delay": 0
+            },
+            {
+              "type": "createEvent",
+              "personality": "all",
+              "event": "14",
+              "delay": 0
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": [
+            "fear-basic",
+            "disgust-basic"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "label": "Despedida",
+      "energyAmount": 40,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "results": [
+        {
+          "type": {
+            "type": "default"
+          },
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
+            {
+              "type": "createEvent",
+              "personality": "all",
+              "event": "15",
+              "delay": 0
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": [
+            "sad-basic",
+            "anger-basic"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "label": "Encontro casual",
+      "energyAmount": 30,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": [
+            "joy-basic",
+            "joy-fun"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "label": "Chuva inesperada",
+      "energyAmount": 20,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 3,
+      "autoCompleteSecret": true,
+      "cardsRequired": false,
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": "fear-fright"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "label": "Celebração",
+      "energyAmount": 40,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": [
+            "joy-bliss",
+            "anger-eustress"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "label": "Novo projeto",
+      "energyAmount": 55,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": [
+            "joy-eager",
+            "fear-anxiety"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "label": "Pedido de ajuda",
+      "energyAmount": 35,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": [
+            "sad-loss",
+            "joy-acceptance"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "label": "Confrontação",
+      "energyAmount": 40,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 2,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "dealBreakers": [
+        {
+          "id": 1,
+          "alias": "anger-rage-break",
+          "suitQuantities": [
+            {
+              "suitId": "anger",
+              "quantity": 1
+            }
+          ],
+          "suitEnergies": [],
+          "cardEmotions": [
+            "anger-rage"
+          ]
+        }
+      ],
+      "results": [
+        {
+          "type": {
+            "type": "dealbreaker",
+            "parameters": "anger-rage-break"
+          },
+          "outputOverride": true,
+          "exclusive": true,
+          "priority": 20,
+          "actions": [
+            {
+              "type": "createEmotion",
+              "emotions": [
+                "anger-frustration",
+                "anger-basic"
+              ]
+            },
+            {
+              "type": "createEvent",
+              "personality": "all",
+              "event": "17",
+              "delay": 0
             }
           ]
         },
         {
-          "id": 2,
-          "label": "Café com alguém",
-          "energyAmount": 30,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 3,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "isBase": true,
-          "modifiers": {
-            "suits": {
-              "joy": 1.4,
-              "anger": 0.6,
-              "disgust": 0.6
-            }
+          "type": {
+            "type": "majority",
+            "parameters": "joy"
           },
-          "results": [
+          "outputOverride": false,
+          "exclusive": true,
+          "priority": 10,
+          "actions": [
             {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "4",
-                  "delay": 0
-                }
-              ]
-            }
-          ],
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": [
-                "joy-fun",
+              "type": "createEmotion",
+              "emotions": [
+                "joy-bliss",
                 "joy-gratitude"
               ]
+            },
+            {
+              "type": "createEvent",
+              "personality": "all",
+              "event": "18",
+              "delay": 0
             }
           ]
         },
         {
-          "id": 3,
-          "label": "Confiança compartilhada",
-          "energyAmount": 35,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "modifiers": {
-            "suits": {
-              "joy": 1.3,
-              "fear": 1.2,
-              "sadness": 0.7
-            }
+          "type": {
+            "type": "specific",
+            "parameters": "fear-anxiety"
           },
-          "results": [
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 5,
+          "actions": [
             {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "generatePersonality",
-                  "personality": "impulsive"
-                },
-                {
-                  "type": "endGame"
-                }
-              ]
-            }
-          ],
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": "joy-acceptance"
+              "type": "createEmotion",
+              "emotions": "fear-fright"
             }
           ]
         },
         {
-          "id": 4,
-          "label": "Convite espontâneo",
-          "energyAmount": 28,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "modifiers": {
-            "suits": {
-              "joy": 1.5,
-              "fear": 0.8
-            }
+          "type": {
+            "type": "default"
           },
-          "results": [
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
             {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "generatePersonality",
-                  "personality": "impulsive"
-                },
-                {
-                  "type": "endGame"
-                }
+              "type": "createEmotion",
+              "emotions": [
+                "sad-basic",
+                "fear-basic"
               ]
             }
-          ],
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": "joy-bliss"
-            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": [
+            "anger-basic",
+            "sad-basic"
           ]
         }
       ]
     },
     {
-      "id": "guarded",
-      "personalities": [
-        "guarded"
-      ],
-      "events": [
+      "id": 16,
+      "label": "Negociação tensa",
+      "energyAmount": 45,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 2,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "dealBreakers": [
         {
           "id": 1,
-          "label": "Muro levantado",
-          "energyAmount": 30,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "isBase": true,
-          "modifiers": {
-            "suits": {
-              "fear": 1.4,
-              "anger": 1.2,
-              "joy": 0.6,
-              "sadness": 1.1
-            }
-          },
-          "results": [
+          "alias": "apathy-break",
+          "suitQuantities": [
             {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "3",
-                  "delay": 0
-                },
-                {
-                  "type": "generatePersonality",
-                  "personality": "warm"
-                },
-                {
-                  "type": "endGame"
-                }
-              ]
+              "suitId": "apathy",
+              "quantity": 1
             }
           ],
-          "outputs": [
+          "suitEnergies": [],
+          "cardEmotions": [
+            "apathy-basic"
+          ]
+        }
+      ],
+      "results": [
+        {
+          "type": {
+            "type": "dealbreaker",
+            "parameters": "apathy-break"
+          },
+          "outputOverride": true,
+          "exclusive": true,
+          "priority": 20,
+          "actions": [
             {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": [
-                "fear-basic",
-                "anger-basic"
+              "type": "createEmotion",
+              "emotions": "apathy-basic"
+            },
+            {
+              "type": "createEvent",
+              "personality": "all",
+              "event": "19",
+              "delay": 0
+            }
+          ]
+        },
+        {
+          "type": {
+            "type": "majority",
+            "parameters": "sadness"
+          },
+          "outputOverride": false,
+          "exclusive": true,
+          "priority": 10,
+          "actions": [
+            {
+              "type": "createEmotion",
+              "emotions": [
+                "sad-despair",
+                "sad-loss"
               ]
             }
           ]
         },
         {
-          "id": 2,
-          "label": "Distância segura",
-          "energyAmount": 28,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 3,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "isBase": true,
-          "modifiers": {
-            "suits": {
-              "fear": 1.3,
-              "sadness": 1.2,
-              "joy": 0.5
-            }
+          "type": {
+            "type": "specific",
+            "parameters": "anger-rage"
           },
-          "results": [
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 5,
+          "actions": [
             {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "4",
-                  "delay": 0
-                }
+              "type": "createEmotion",
+              "emotions": [
+                "anger-frustration",
+                "fear-basic"
               ]
-            }
-          ],
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": "sad-basic"
             }
           ]
         },
         {
-          "id": 3,
-          "label": "Quase se abrir",
-          "energyAmount": 35,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "modifiers": {
-            "suits": {
-              "fear": 1.3,
-              "joy": 1.1,
-              "sadness": 1
-            }
+          "type": {
+            "type": "default"
           },
-          "results": [
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
             {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "generatePersonality",
-                  "personality": "warm"
-                },
-                {
-                  "type": "endGame"
-                }
-              ]
-            }
-          ],
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": "fear-anxiety"
+              "type": "createEvent",
+              "personality": "all",
+              "event": "19",
+              "delay": 0
             }
           ]
-        },
+        }
+      ],
+      "outputs": [
         {
-          "id": 4,
-          "label": "Recuo estratégico",
-          "energyAmount": 30,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "modifiers": {
-            "suits": {
-              "fear": 1.4,
-              "anger": 0.8,
-              "joy": 0.7
-            }
+          "input": {
+            "type": "default"
           },
-          "results": [
-            {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "generatePersonality",
-                  "personality": "warm"
-                },
-                {
-                  "type": "endGame"
-                }
-              ]
-            }
-          ],
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": "anger-basic"
-            }
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": [
+            "fear-basic",
+            "anger-basic"
           ]
         }
       ]
     },
     {
-      "id": "guarded-warm",
+      "id": 17,
+      "label": "Ruptura",
+      "energyAmount": 30,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": "anger-basic"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "label": "Reconciliação",
+      "energyAmount": 30,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "results": [
+        {
+          "type": {
+            "type": "default"
+          },
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
+            {
+              "type": "generatePersonality",
+              "personality": "warm"
+            },
+            {
+              "type": "endGame"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": "joy-acceptance"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "label": "Impasse",
+      "energyAmount": 25,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 2,
+      "autoCompleteSecret": false,
+      "cardsRequired": false,
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": "apathy-basic"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "label": "Abraço inesperado",
+      "energyAmount": 25,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "isBase": true,
+      "modifiers": {
+        "suits": {
+          "joy": 1.5,
+          "sadness": 0.5,
+          "fear": 0.5
+        }
+      },
+      "results": [
+        {
+          "type": {
+            "type": "default"
+          },
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
+            {
+              "type": "generatePersonality",
+              "personality": "guarded"
+            },
+            {
+              "type": "endGame"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": "joy-basic"
+        }
+      ],
+      "personalities": [
+        "warm"
+      ]
+    },
+    {
+      "id": 21,
+      "label": "Café com alguém",
+      "energyAmount": 30,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 3,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "isBase": true,
+      "modifiers": {
+        "suits": {
+          "joy": 1.4,
+          "anger": 0.6,
+          "disgust": 0.6
+        }
+      },
+      "results": [
+        {
+          "type": {
+            "type": "default"
+          },
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
+            {
+              "type": "createEvent",
+              "personality": "all",
+              "event": "23",
+              "delay": 0
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": [
+            "joy-fun",
+            "joy-gratitude"
+          ]
+        }
+      ],
+      "personalities": [
+        "warm"
+      ]
+    },
+    {
+      "id": 22,
+      "label": "Confiança compartilhada",
+      "energyAmount": 35,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "modifiers": {
+        "suits": {
+          "joy": 1.3,
+          "fear": 1.2,
+          "sadness": 0.7
+        }
+      },
+      "results": [
+        {
+          "type": {
+            "type": "default"
+          },
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
+            {
+              "type": "generatePersonality",
+              "personality": "impulsive"
+            },
+            {
+              "type": "endGame"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": "joy-acceptance"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "label": "Convite espontâneo",
+      "energyAmount": 28,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "modifiers": {
+        "suits": {
+          "joy": 1.5,
+          "fear": 0.8
+        }
+      },
+      "results": [
+        {
+          "type": {
+            "type": "default"
+          },
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
+            {
+              "type": "generatePersonality",
+              "personality": "impulsive"
+            },
+            {
+              "type": "endGame"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": "joy-bliss"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "label": "Muro levantado",
+      "energyAmount": 30,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "isBase": true,
+      "modifiers": {
+        "suits": {
+          "fear": 1.4,
+          "anger": 1.2,
+          "joy": 0.6,
+          "sadness": 1.1
+        }
+      },
+      "results": [
+        {
+          "type": {
+            "type": "default"
+          },
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
+            {
+              "type": "createEvent",
+              "personality": "all",
+              "event": "26",
+              "delay": 0
+            },
+            {
+              "type": "generatePersonality",
+              "personality": "warm"
+            },
+            {
+              "type": "endGame"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": [
+            "fear-basic",
+            "anger-basic"
+          ]
+        }
+      ],
+      "personalities": [
+        "guarded"
+      ]
+    },
+    {
+      "id": 25,
+      "label": "Distância segura",
+      "energyAmount": 28,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 3,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "isBase": true,
+      "modifiers": {
+        "suits": {
+          "fear": 1.3,
+          "sadness": 1.2,
+          "joy": 0.5
+        }
+      },
+      "results": [
+        {
+          "type": {
+            "type": "default"
+          },
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
+            {
+              "type": "createEvent",
+              "personality": "all",
+              "event": "27",
+              "delay": 0
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": "sad-basic"
+        }
+      ],
+      "personalities": [
+        "guarded"
+      ]
+    },
+    {
+      "id": 26,
+      "label": "Quase se abrir",
+      "energyAmount": 35,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "modifiers": {
+        "suits": {
+          "fear": 1.3,
+          "joy": 1.1,
+          "sadness": 1
+        }
+      },
+      "results": [
+        {
+          "type": {
+            "type": "default"
+          },
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
+            {
+              "type": "generatePersonality",
+              "personality": "warm"
+            },
+            {
+              "type": "endGame"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": "fear-anxiety"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "label": "Recuo estratégico",
+      "energyAmount": 30,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "modifiers": {
+        "suits": {
+          "fear": 1.4,
+          "anger": 0.8,
+          "joy": 0.7
+        }
+      },
+      "results": [
+        {
+          "type": {
+            "type": "default"
+          },
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
+            {
+              "type": "generatePersonality",
+              "personality": "warm"
+            },
+            {
+              "type": "endGame"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": "anger-basic"
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "label": "Limite com carinho",
+      "energyAmount": 30,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "isBase": true,
+      "modifiers": {
+        "suits": {
+          "joy": 1.2,
+          "fear": 1.2,
+          "anger": 0.7,
+          "sadness": 0.8
+        }
+      },
+      "dealBreakers": [
+        {
+          "id": 1,
+          "alias": "anger-break",
+          "suitQuantities": [
+            {
+              "suitId": "anger",
+              "quantity": 2
+            }
+          ],
+          "suitEnergies": [],
+          "cardEmotions": []
+        }
+      ],
+      "results": [
+        {
+          "type": {
+            "type": "default"
+          },
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
+            {
+              "type": "createEvent",
+              "personality": "all",
+              "event": "30",
+              "delay": 0
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "input": {
+            "type": "default"
+          },
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": [
+            "fear-basic",
+            "joy-basic"
+          ]
+        }
+      ],
       "personalities": [
         "warm",
         "guarded"
+      ]
+    },
+    {
+      "id": 29,
+      "label": "Silêncio acolhedor",
+      "energyAmount": 28,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 2,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "isBase": true,
+      "modifiers": {
+        "suits": {
+          "sadness": 1.3,
+          "joy": 1.1,
+          "anger": 0.5
+        }
+      },
+      "results": [
+        {
+          "type": {
+            "type": "default"
+          },
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
+            {
+              "type": "createEvent",
+              "personality": "all",
+              "event": "31",
+              "delay": 0
+            }
+          ]
+        }
       ],
-      "events": [
+      "outputs": [
         {
-          "id": 1,
-          "label": "Limite com carinho",
-          "energyAmount": 30,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "isBase": true,
-          "modifiers": {
-            "suits": {
-              "joy": 1.2,
-              "fear": 1.2,
-              "anger": 0.7,
-              "sadness": 0.8
-            }
+          "input": {
+            "type": "default"
           },
-          "dealBreakers": [
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": "sad-basic"
+        }
+      ],
+      "personalities": [
+        "warm",
+        "guarded"
+      ]
+    },
+    {
+      "id": 30,
+      "label": "Dizer não com gentileza",
+      "energyAmount": 40,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 2,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "modifiers": {
+        "suits": {
+          "fear": 1.3,
+          "joy": 1.2,
+          "anger": 0.8
+        }
+      },
+      "results": [
+        {
+          "type": {
+            "type": "default"
+          },
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
             {
-              "id": 1,
-              "alias": "anger-break",
-              "suitQuantities": [
-                {
-                  "suitId": "anger",
-                  "quantity": 2
-                }
-              ],
-              "suitEnergies": [],
-              "cardEmotions": []
-            }
-          ],
-          "results": [
+              "type": "generatePersonality",
+              "personality": "impulsive"
+            },
             {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "3",
-                  "delay": 0
-                }
-              ]
-            }
-          ],
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": [
-                "fear-basic",
-                "joy-basic"
-              ]
+              "type": "endGame"
             }
           ]
-        },
+        }
+      ],
+      "outputs": [
         {
-          "id": 2,
-          "label": "Silêncio acolhedor",
-          "energyAmount": 28,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 2,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "isBase": true,
-          "modifiers": {
-            "suits": {
-              "sadness": 1.3,
-              "joy": 1.1,
-              "anger": 0.5
-            }
+          "input": {
+            "type": "default"
           },
-          "results": [
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": [
+            "joy-acceptance",
+            "fear-anxiety"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "label": "Reaproximação cautelosa",
+      "energyAmount": 35,
+      "energyAmountSecret": false,
+      "cardsPerTurn": 1,
+      "autoComplete": 0,
+      "autoCompleteSecret": false,
+      "cardsRequired": true,
+      "modifiers": {
+        "suits": {
+          "joy": 1.3,
+          "sadness": 1.1,
+          "fear": 1.1
+        }
+      },
+      "results": [
+        {
+          "type": {
+            "type": "default"
+          },
+          "outputOverride": false,
+          "exclusive": false,
+          "priority": 0,
+          "actions": [
             {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "createEvent",
-                  "personality": "all",
-                  "event": "4",
-                  "delay": 0
-                }
-              ]
-            }
-          ],
-          "outputs": [
+              "type": "generatePersonality",
+              "personality": "impulsive"
+            },
             {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": "sad-basic"
+              "type": "endGame"
             }
           ]
-        },
+        }
+      ],
+      "outputs": [
         {
-          "id": 3,
-          "label": "Dizer não com gentileza",
-          "energyAmount": 40,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 2,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "modifiers": {
-            "suits": {
-              "fear": 1.3,
-              "joy": 1.2,
-              "anger": 0.8
-            }
+          "input": {
+            "type": "default"
           },
-          "results": [
-            {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "generatePersonality",
-                  "personality": "impulsive"
-                },
-                {
-                  "type": "endGame"
-                }
-              ]
-            }
-          ],
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": [
-                "joy-acceptance",
-                "fear-anxiety"
-              ]
-            }
-          ]
-        },
-        {
-          "id": 4,
-          "label": "Reaproximação cautelosa",
-          "energyAmount": 35,
-          "energyAmountSecret": false,
-          "cardsPerTurn": 1,
-          "autoComplete": 0,
-          "autoCompleteSecret": false,
-          "cardsRequired": true,
-          "modifiers": {
-            "suits": {
-              "joy": 1.3,
-              "sadness": 1.1,
-              "fear": 1.1
-            }
-          },
-          "results": [
-            {
-              "type": {
-                "type": "default"
-              },
-              "outputOverride": false,
-              "exclusive": false,
-              "priority": 0,
-              "actions": [
-                {
-                  "type": "generatePersonality",
-                  "personality": "impulsive"
-                },
-                {
-                  "type": "endGame"
-                }
-              ]
-            }
-          ],
-          "outputs": [
-            {
-              "input": {
-                "type": "default"
-              },
-              "exclusive": false,
-              "priority": 0,
-              "outputEmotions": "joy-gratitude"
-            }
-          ]
+          "exclusive": false,
+          "priority": 0,
+          "outputEmotions": "joy-gratitude"
         }
       ]
     }

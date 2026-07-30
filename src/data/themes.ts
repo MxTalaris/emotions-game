@@ -56,7 +56,8 @@ const BASIC_BUTTONS: ThemeButtons = {
 };
 
 const BASIC_BACKGROUND: ThemeBackground = {
-  image: null,
+  image: '/assets/backgrounds/forest-grounds-bg-02.png',
+  overlayImage: '/assets/backgrounds/forest-grounds-bg-01.png',
   skyTop: '#c5dff0',
   skyMid: '#e8f0d8',
   ground: '#d4c4a8',
@@ -138,8 +139,13 @@ function normalizeEventColors(
 function normalizeBackground(raw: Partial<ThemeBackground> | undefined): ThemeBackground {
   const image =
     typeof raw?.image === 'string' && raw.image.trim() ? raw.image.trim() : null;
+  const overlayImage =
+    typeof raw?.overlayImage === 'string' && raw.overlayImage.trim()
+      ? raw.overlayImage.trim()
+      : null;
   return {
     image,
+    overlayImage,
     skyTop: normalizeHex(raw?.skyTop, BASIC_BACKGROUND.skyTop),
     skyMid: normalizeHex(raw?.skyMid, BASIC_BACKGROUND.skyMid),
     ground: normalizeHex(raw?.ground, BASIC_BACKGROUND.ground),
@@ -228,6 +234,7 @@ export function resolveTheme(entry: ThemeEntry): ResolvedTheme {
 
   const background: ResolvedThemeBackground = {
     image: entry.background.image,
+    overlayImage: entry.background.overlayImage ?? null,
     skyTop: hexToNumber(entry.background.skyTop, 0xc5dff0),
     skyMid: hexToNumber(entry.background.skyMid, 0xe8f0d8),
     ground: hexToNumber(entry.background.ground, 0xd4c4a8),
@@ -266,8 +273,11 @@ export function getBackgroundMusicForTheme(
   };
 }
 
-export function themeBackgroundTextureKey(alias: string): string {
-  return `theme-bg-${alias}`;
+export function themeBackgroundTextureKey(
+  alias: string,
+  layer: 'base' | 'overlay' = 'base'
+): string {
+  return layer === 'base' ? `theme-bg-${alias}` : `theme-bg-overlay-${alias}`;
 }
 
 export function applyBordersToTheme(theme: ThemeEntry): ThemeEntry {
@@ -283,7 +293,7 @@ export function createThemeFromBasic(alias: string, name: string): ThemeEntry {
     ...basic,
     alias,
     name,
-    background: { ...basic.background, image: null },
+    background: { ...basic.background, image: null, overlayImage: null },
     borders: { ...basic.borders },
     buttons: { ...basic.buttons },
     eventColors: { ...basic.eventColors },

@@ -110,19 +110,14 @@ export interface GameEventDefinition {
   modifiers?: EventModifiers;
   dealBreakers?: DealBreaker[];
   isBase?: boolean;
+  personalities?: string[];
   results?: EventResult[];
   outputs?: EventOutput[];
   rules?: unknown[];
 }
 
-export interface EventSeedDefinition {
-  id: string;
-  personalities: string[];
+export interface EventTemplatesFile {
   events: GameEventDefinition[];
-}
-
-export interface EventSeedsFile {
-  seeds: EventSeedDefinition[];
 }
 
 export const PLAYABLE_SUITS: CardSuit[] = [
@@ -185,6 +180,7 @@ export function createEmptySoundsCatalog(): SoundsCatalog {
 
 export interface ThemeBackground {
   image: string | null;
+  overlayImage?: string | null;
   skyTop: string;
   skyMid: string;
   ground: string;

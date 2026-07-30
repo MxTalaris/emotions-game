@@ -20,13 +20,12 @@ import {
   EventOutputInput,
   EventResult,
   EventResultType,
-  EventSeedDefinition,
-  EventSeedsFile,
+  EventTemplatesFile,
   GameEventDefinition,
   OUTPUT_PLACED_CARDS,
   PersonalityEntry,
 } from '../types';
-import { collectPersonalityIds, validateEventSeeds } from '../validate';
+import { collectPersonalityIds, validateEventTemplates } from '../validate';
 import {
   disposeEventsTreeFlows,
   mountEventsTreeFlow,
@@ -34,8 +33,8 @@ import {
 } from './EventsTreeFlow';
 
 export interface EventsEditorContext {
-  getSeeds: () => EventSeedsFile;
-  setSeeds: (next: EventSeedsFile) => void;
+  getEvents: () => EventTemplatesFile;
+  setEvents: (next: EventTemplatesFile) => void;
   getPersonalities: () => PersonalityEntry[];
   getCardAliases: () => string[];
   getThemeAliases: () => string[];
@@ -49,11 +48,11 @@ const BASIC_FILTER = 'basic';
 type BrowseMode = 'list' | 'tree';
 type View =
   | { kind: 'browse' }
-  | { kind: 'event'; seedIndex: number; eventIndex: number };
+  | { kind: 'event'; eventIndex: number };
 
 let view: View = { kind: 'browse' };
 let browseMode: BrowseMode = 'list';
-/** Selected personality filter ids. Empty = show all. Use "basic" for empty-personality seeds. */
+/** Selected personality filter ids. Empty = show all. Use "basic" for base events without personalities. */
 let personalityFilter: string[] = [];
 let eventNameFilter = '';
 /** Keeps event form accordions open across re-renders. */
@@ -77,21 +76,8 @@ function eventAccordion(
   return details;
 }
 
-function normalizePersonalities(personalities: string[]): string[] {
-  return [...new Set(personalities)].sort();
-}
-
-function personalitiesKey(personalities: string[]): string {
-  return normalizePersonalities(personalities).join('|');
-}
-
-function buildSeedId(personalities: string[]): string {
-  const normalized = normalizePersonalities(personalities);
-  return normalized.length === 0 ? 'basic' : normalized.join('-');
-}
-
-function nextEventId(seed: EventSeedDefinition): number {
-  const max = seed.events.reduce((m, e) => Math.max(m, e.id), 0);
+function nextEventId(events: GameEventDefinition[]): number {
+  const max = events.reduce((m, e) => Math.max(m, e.id), 0);
   return max + 1;
 }
 
@@ -107,6 +93,9 @@ function cloneEvent(base?: Partial<GameEventDefinition>): GameEventDefinition {
     autoCompleteSecret: base?.autoCompleteSecret ?? false,
     cardsRequired: base?.cardsRequired ?? true,
     isBase: base?.isBase,
+    personalities: base?.personalities
+      ? [...base.personalities]
+      : undefined,
     modifiers: base?.modifiers ? structuredClone(base.modifiers) : undefined,
     dealBreakers: base?.dealBreakers
       ? structuredClone(base.dealBreakers)
@@ -120,26 +109,28 @@ function createBlankEvent(label: string, id: number): GameEventDefinition {
   return cloneEvent({ id, label, isBase: undefined });
 }
 
-function seedMatchesFilter(
-  seed: EventSeedDefinition,
+function eventMatchesPersonalityFilter(
+  event: GameEventDefinition,
   filter: string[]
 ): boolean {
   if (filter.length === 0) return true;
+  if (!event.isBase) return true;
+
   const wantsBasic = filter.includes(BASIC_FILTER);
   const personalityIds = filter.filter((id) => id !== BASIC_FILTER);
+  const eventPersonalities = event.personalities ?? [];
+
   if (wantsBasic && personalityIds.length === 0) {
-    return seed.personalities.length === 0;
+    return eventPersonalities.length === 0;
   }
   if (wantsBasic && personalityIds.length > 0) {
     return false;
   }
-  return personalityIds.every((id) => seed.personalities.includes(id));
+  return personalityIds.every((id) => eventPersonalities.includes(id));
 }
 
 interface FlatEventRow {
-  seedIndex: number;
   eventIndex: number;
-  seed: EventSeedDefinition;
   event: GameEventDefinition;
 }
 
@@ -156,17 +147,15 @@ function eventMatchesNameFilter(
 }
 
 function collectFlatEvents(
-  file: EventSeedsFile,
+  file: EventTemplatesFile,
   filter: string[],
   nameQuery = eventNameFilter
 ): FlatEventRow[] {
   const rows: FlatEventRow[] = [];
-  file.seeds.forEach((seed, seedIndex) => {
-    if (!seedMatchesFilter(seed, filter)) return;
-    seed.events.forEach((event, eventIndex) => {
-      if (!eventMatchesNameFilter(event, nameQuery)) return;
-      rows.push({ seedIndex, eventIndex, seed, event });
-    });
+  file.events.forEach((event, eventIndex) => {
+    if (!eventMatchesPersonalityFilter(event, filter)) return;
+    if (!eventMatchesNameFilter(event, nameQuery)) return;
+    rows.push({ eventIndex, event });
   });
   return rows;
 }
@@ -188,86 +177,14 @@ function stripCreateEventRefs(
   });
 }
 
-function deleteEvent(
-  ctx: EventsEditorContext,
-  seedIndex: number,
-  eventIndex: number
-): void {
-  const file = ctx.getSeeds();
-  const seed = file.seeds[seedIndex];
-  if (!seed) return;
-  const target = seed.events[eventIndex];
+function deleteEvent(ctx: EventsEditorContext, eventIndex: number): void {
+  const file = ctx.getEvents();
+  const target = file.events[eventIndex];
   if (!target) return;
   const deletedId = String(target.id);
-  const remaining = seed.events.filter((_, i) => i !== eventIndex);
+  const remaining = file.events.filter((_, i) => i !== eventIndex);
   const cleaned = stripCreateEventRefs(remaining, deletedId);
-  updateSeed(ctx, seedIndex, { events: cleaned });
-}
-
-function findSeedByPersonalities(
-  file: EventSeedsFile,
-  personalities: string[]
-): number {
-  const key = personalitiesKey(personalities);
-  return file.seeds.findIndex(
-    (seed) => personalitiesKey(seed.personalities) === key
-  );
-}
-
-/** Move event to seed matching personalities; create seed if needed. Returns new indices. */
-function moveEventToPersonalities(
-  ctx: EventsEditorContext,
-  seedIndex: number,
-  eventIndex: number,
-  personalities: string[]
-): { seedIndex: number; eventIndex: number } {
-  const normalized = normalizePersonalities(personalities);
-  const file = ctx.getSeeds();
-  const source = file.seeds[seedIndex];
-  if (!source) return { seedIndex, eventIndex };
-
-  if (personalitiesKey(source.personalities) === personalitiesKey(normalized)) {
-    return { seedIndex, eventIndex };
-  }
-
-  const event = structuredClone(source.events[eventIndex]);
-  if (!event) return { seedIndex, eventIndex };
-
-  let seeds = file.seeds.map((seed, si) =>
-    si === seedIndex
-      ? { ...seed, events: seed.events.filter((_, i) => i !== eventIndex) }
-      : seed
-  );
-
-  let targetIndex = findSeedByPersonalities({ seeds }, normalized);
-  if (targetIndex < 0) {
-    seeds = [
-      ...seeds,
-      {
-        id: buildSeedId(normalized),
-        personalities: normalized,
-        events: [],
-      },
-    ];
-    targetIndex = seeds.length - 1;
-  }
-
-  const target = seeds[targetIndex];
-  const existingIds = new Set(target.events.map((e) => e.id));
-  if (existingIds.has(event.id)) {
-    event.id = nextEventId(target);
-  }
-  seeds = seeds.map((seed, si) =>
-    si === targetIndex
-      ? { ...seed, events: [...seed.events, event] }
-      : seed
-  );
-
-  ctx.setSeeds({ seeds });
-  return {
-    seedIndex: targetIndex,
-    eventIndex: seeds[targetIndex].events.length - 1,
-  };
+  ctx.setEvents({ events: cleaned });
 }
 
 function promptNewEventLabel(): string | null {
@@ -277,47 +194,34 @@ function promptNewEventLabel(): string | null {
   return trimmed || null;
 }
 
-function addEventToSeed(
+function addEvent(
   ctx: EventsEditorContext,
-  seedIndex: number,
   label: string
-): { seedIndex: number; eventIndex: number; id: string } {
-  const file = ctx.getSeeds();
-  const seed = file.seeds[seedIndex];
-  if (!seed) {
-    throw new Error('Seed not found');
-  }
-  const id = nextEventId(seed);
+): { eventIndex: number; id: string } {
+  const file = ctx.getEvents();
+  const id = nextEventId(file.events);
   const event = createBlankEvent(label, id);
-  updateSeed(ctx, seedIndex, { events: [...seed.events, event] });
+  ctx.setEvents({ events: [...file.events, event] });
   return {
-    seedIndex,
-    eventIndex: seed.events.length,
+    eventIndex: file.events.length,
     id: String(id),
   };
-}
-
-function ensureDefaultSeed(ctx: EventsEditorContext): number {
-  const file = ctx.getSeeds();
-  if (file.seeds.length > 0) {
-    const basic = findSeedByPersonalities(file, []);
-    return basic >= 0 ? basic : 0;
-  }
-  ctx.setSeeds({
-    seeds: [{ id: 'basic', personalities: [], events: [] }],
-  });
-  return 0;
 }
 
 async function saveEvents(
   ctx: EventsEditorContext,
   errorsBox: HTMLElement
 ): Promise<void> {
-  const data = ctx.getSeeds();
+  const data = ctx.getEvents();
   const cardAliases = new Set(ctx.getCardAliases());
   const personalityIds = collectPersonalityIds(ctx.getPersonalities());
   const themeAliases = new Set(ctx.getThemeAliases());
-  const errors = validateEventSeeds(data, cardAliases, personalityIds, themeAliases);
+  const errors = validateEventTemplates(
+    data,
+    cardAliases,
+    personalityIds,
+    themeAliases
+  );
   clear(errorsBox);
   if (errors.length) {
     errorsBox.className = 'errors';
@@ -336,41 +240,24 @@ async function saveEvents(
   }
 }
 
-function updateSeed(
-  ctx: EventsEditorContext,
-  seedIndex: number,
-  patch: Partial<EventSeedDefinition>
-): void {
-  const file = ctx.getSeeds();
-  const seeds = file.seeds.map((s, i) =>
-    i === seedIndex ? { ...s, ...patch } : s
-  );
-  ctx.setSeeds({ seeds });
-}
-
 function updateEvent(
   ctx: EventsEditorContext,
-  seedIndex: number,
   eventIndex: number,
   patch: Partial<GameEventDefinition> | ((e: GameEventDefinition) => GameEventDefinition)
 ): void {
-  const file = ctx.getSeeds();
-  const seeds = file.seeds.map((seed, si) => {
-    if (si !== seedIndex) return seed;
-    const events = seed.events.map((event, ei) => {
-      if (ei !== eventIndex) return event;
-      return typeof patch === 'function' ? patch(event) : { ...event, ...patch };
-    });
-    return { ...seed, events };
+  const file = ctx.getEvents();
+  const events = file.events.map((event, ei) => {
+    if (ei !== eventIndex) return event;
+    return typeof patch === 'function' ? patch(event) : { ...event, ...patch };
   });
-  ctx.setSeeds({ seeds });
+  ctx.setEvents({ events });
 }
 
 function eventSelectOptions(
-  seed: EventSeedDefinition,
+  events: GameEventDefinition[],
   includeNew = false
 ): { value: string; label: string }[] {
-  const opts = seed.events
+  const opts = events
     .slice()
     .sort((a, b) => a.id - b.id)
     .map((e) => ({
@@ -587,7 +474,6 @@ function renderSuitEnergyList(
 
 function renderModifiersSection(
   event: GameEventDefinition,
-  seedIndex: number,
   eventIndex: number,
   ctx: EventsEditorContext,
   cardAliases: string[],
@@ -610,7 +496,7 @@ function renderModifiersSection(
         'div',
         { className: 'kv-row' },
         selectInput(suit, suitOptions(), (v) => {
-          updateEvent(ctx, seedIndex, eventIndex, (e) => {
+          updateEvent(ctx, eventIndex, (e) => {
             const suits = { ...(e.modifiers?.suits ?? {}) };
             const entries = Object.entries(suits);
             const next: Record<string, number> = {};
@@ -622,7 +508,7 @@ function renderModifiersSection(
           rerender();
         }),
         numberInput(multiplier, (v) => {
-          updateEvent(ctx, seedIndex, eventIndex, (e) => {
+          updateEvent(ctx, eventIndex, (e) => {
             const suits = { ...(e.modifiers?.suits ?? {}) };
             const keys = Object.keys(suits);
             const key = keys[index];
@@ -633,7 +519,7 @@ function renderModifiersSection(
         button(
           '×',
           () => {
-            updateEvent(ctx, seedIndex, eventIndex, (e) => {
+            updateEvent(ctx, eventIndex, (e) => {
               const suits = { ...(e.modifiers?.suits ?? {}) };
               const keys = Object.keys(suits);
               const key = keys[index];
@@ -651,7 +537,7 @@ function renderModifiersSection(
     button(
       'Add suit modifier',
       () => {
-        updateEvent(ctx, seedIndex, eventIndex, (e) => ({
+        updateEvent(ctx, eventIndex, (e) => ({
           ...e,
           modifiers: {
             ...e.modifiers,
@@ -672,7 +558,7 @@ function renderModifiersSection(
         'div',
         { className: 'kv-row' },
         selectInput(alias, aliasOptions(cardAliases), (v) => {
-          updateEvent(ctx, seedIndex, eventIndex, (e) => {
+          updateEvent(ctx, eventIndex, (e) => {
             const cards = { ...(e.modifiers?.cards ?? {}) };
             const entries = Object.entries(cards);
             const next: Record<string, number> = {};
@@ -684,7 +570,7 @@ function renderModifiersSection(
           rerender();
         }),
         numberInput(multiplier, (v) => {
-          updateEvent(ctx, seedIndex, eventIndex, (e) => {
+          updateEvent(ctx, eventIndex, (e) => {
             const cards = { ...(e.modifiers?.cards ?? {}) };
             const keys = Object.keys(cards);
             const key = keys[index];
@@ -695,7 +581,7 @@ function renderModifiersSection(
         button(
           '×',
           () => {
-            updateEvent(ctx, seedIndex, eventIndex, (e) => {
+            updateEvent(ctx, eventIndex, (e) => {
               const cards = { ...(e.modifiers?.cards ?? {}) };
               const keys = Object.keys(cards);
               const key = keys[index];
@@ -714,7 +600,7 @@ function renderModifiersSection(
       'Add card modifier',
       () => {
         const first = cardAliases[0] ?? 'joy-basic';
-        updateEvent(ctx, seedIndex, eventIndex, (e) => ({
+        updateEvent(ctx, eventIndex, (e) => ({
           ...e,
           modifiers: {
             ...e.modifiers,
@@ -738,7 +624,6 @@ function renderModifiersSection(
 
 function renderDealBreakersSection(
   event: GameEventDefinition,
-  seedIndex: number,
   eventIndex: number,
   ctx: EventsEditorContext,
   cardAliases: string[],
@@ -762,7 +647,7 @@ function renderDealBreakersSection(
             suitEnergies: [],
             cardEmotions: [],
           });
-          updateEvent(ctx, seedIndex, eventIndex, { dealBreakers: list });
+          updateEvent(ctx, eventIndex, { dealBreakers: list });
           rerender();
         },
         'btn small'
@@ -779,7 +664,7 @@ function renderDealBreakersSection(
     const block = el('div', { className: 'nested' });
     const setDb = (patch: Partial<DealBreaker>) => {
       const next = list.map((item, i) => (i === di ? { ...item, ...patch } : item));
-      updateEvent(ctx, seedIndex, eventIndex, { dealBreakers: next });
+      updateEvent(ctx, eventIndex, { dealBreakers: next });
     };
     block.append(
       el(
@@ -789,7 +674,7 @@ function renderDealBreakersSection(
         button(
           'Remove',
           () => {
-            updateEvent(ctx, seedIndex, eventIndex, {
+            updateEvent(ctx, eventIndex, {
               dealBreakers: list.filter((_, i) => i !== di),
             });
             rerender();
@@ -844,15 +729,13 @@ function renderActionEditor(
   cardAliases: string[],
   personalityIds: string[],
   themeAliases: string[],
-  seed: EventSeedDefinition,
-  seedIndex: number,
+  events: GameEventDefinition[],
   ctx: EventsEditorContext,
   rerender: () => void
 ): HTMLElement {
   const block = el('div', { className: 'nested' });
-  const eventOpts = eventSelectOptions(seed, true);
-  const defaultEventId =
-    seed.events[0] != null ? String(seed.events[0].id) : '1';
+  const eventOpts = eventSelectOptions(events, true);
+  const defaultEventId = events[0] != null ? String(events[0].id) : '1';
 
   const typeSelect = selectInput(
     action.type,
@@ -928,7 +811,7 @@ function renderActionEditor(
                 rerender();
                 return;
               }
-              const created = addEventToSeed(ctx, seedIndex, label);
+              const created = addEvent(ctx, label);
               onChange({ ...action, event: created.id });
               rerender();
               return;
@@ -984,19 +867,17 @@ function renderActionEditor(
 
 function renderResultsSection(
   event: GameEventDefinition,
-  seedIndex: number,
   eventIndex: number,
   ctx: EventsEditorContext,
   cardAliases: string[],
   personalityIds: string[],
   themeAliases: string[],
-  seed: EventSeedDefinition,
+  events: GameEventDefinition[],
   dealBreakerAliases: string[],
   rerender: () => void
 ): HTMLElement {
   const section = el('div', { className: 'nested' });
-  const defaultEventId =
-    seed.events[0] != null ? String(seed.events[0].id) : '1';
+  const defaultEventId = events[0] != null ? String(events[0].id) : '1';
   section.append(
     el(
       'div',
@@ -1013,7 +894,7 @@ function renderResultsSection(
             priority: 0,
             actions: [],
           });
-          updateEvent(ctx, seedIndex, eventIndex, { results: list });
+          updateEvent(ctx, eventIndex, { results: list });
           rerender();
         },
         'btn small'
@@ -1032,7 +913,7 @@ function renderResultsSection(
       const next = list.map((item, i) =>
         i === ri ? { ...item, ...patch } : item
       );
-      updateEvent(ctx, seedIndex, eventIndex, { results: next });
+      updateEvent(ctx, eventIndex, { results: next });
     };
 
     const typeValue = result.type.type;
@@ -1044,7 +925,7 @@ function renderResultsSection(
         button(
           'Remove',
           () => {
-            updateEvent(ctx, seedIndex, eventIndex, {
+            updateEvent(ctx, eventIndex, {
               results: list.filter((_, i) => i !== ri),
             });
             rerender();
@@ -1147,8 +1028,7 @@ function renderResultsSection(
           cardAliases,
           personalityIds,
           themeAliases,
-          seed,
-          seedIndex,
+          events,
           ctx,
           rerender
         )
@@ -1194,7 +1074,6 @@ const OUTPUT_EMOTION_EXTRA_OPTIONS = [
 
 function renderOutputsSection(
   event: GameEventDefinition,
-  seedIndex: number,
   eventIndex: number,
   ctx: EventsEditorContext,
   cardAliases: string[],
@@ -1216,7 +1095,7 @@ function renderOutputsSection(
             priority: 0,
             outputEmotions: cardAliases[0] ?? 'joy-basic',
           });
-          updateEvent(ctx, seedIndex, eventIndex, { outputs: list });
+          updateEvent(ctx, eventIndex, { outputs: list });
           rerender();
         },
         'btn small'
@@ -1235,7 +1114,7 @@ function renderOutputsSection(
       const next = list.map((item, i) =>
         i === oi ? { ...item, ...patch } : item
       );
-      updateEvent(ctx, seedIndex, eventIndex, { outputs: next });
+      updateEvent(ctx, eventIndex, { outputs: next });
     };
 
     const emotions = Array.isArray(output.outputEmotions)
@@ -1250,7 +1129,7 @@ function renderOutputsSection(
         button(
           'Remove',
           () => {
-            updateEvent(ctx, seedIndex, eventIndex, {
+            updateEvent(ctx, eventIndex, {
               outputs: list.filter((_, i) => i !== oi),
             });
             rerender();
@@ -1359,8 +1238,7 @@ function renderBreadcrumb(
   );
 
   if (view.kind === 'event') {
-    const event =
-      ctx.getSeeds().seeds[view.seedIndex]?.events[view.eventIndex];
+    const event = ctx.getEvents().events[view.eventIndex];
     crumbs.append(
       el('span', { className: 'sep', text: '/' }),
       el('span', {
@@ -1475,15 +1353,13 @@ function confirmDeleteEvent(label: string): boolean {
 
 function addCreateEventLink(
   ctx: EventsEditorContext,
-  seedIndex: number,
   parentEventId: number,
   childEventId: number
 ): void {
-  const seed = ctx.getSeeds().seeds[seedIndex];
-  if (!seed) return;
-  const eventIndex = seed.events.findIndex((e) => e.id === parentEventId);
+  const file = ctx.getEvents();
+  const eventIndex = file.events.findIndex((e) => e.id === parentEventId);
   if (eventIndex < 0) return;
-  const event = seed.events[eventIndex];
+  const event = file.events[eventIndex];
   const results = [...(event.results ?? [])];
   const already = results.some((result) =>
     result.actions.some(
@@ -1523,20 +1399,18 @@ function addCreateEventLink(
       ],
     };
   }
-  updateEvent(ctx, seedIndex, eventIndex, { results });
+  updateEvent(ctx, eventIndex, { results });
 }
 
 function removeCreateEventLink(
   ctx: EventsEditorContext,
-  seedIndex: number,
   parentEventId: number,
   childEventId: number
 ): void {
-  const seed = ctx.getSeeds().seeds[seedIndex];
-  if (!seed) return;
-  const eventIndex = seed.events.findIndex((e) => e.id === parentEventId);
+  const file = ctx.getEvents();
+  const eventIndex = file.events.findIndex((e) => e.id === parentEventId);
   if (eventIndex < 0) return;
-  const event = seed.events[eventIndex];
+  const event = file.events[eventIndex];
   const child = String(childEventId);
   const results = (event.results ?? []).map((result) => ({
     ...result,
@@ -1545,18 +1419,17 @@ function removeCreateEventLink(
         !(action.type === 'createEvent' && action.event === child)
     ),
   }));
-  updateEvent(ctx, seedIndex, eventIndex, { results });
+  updateEvent(ctx, eventIndex, { results });
 }
 
 function openEventModal(
   ctx: EventsEditorContext,
-  seedIndex: number,
   eventIndex: number,
   parentRerender: () => void
 ): void {
   const body = el('div');
   const errorsBox = el('div');
-  const loc = { seedIndex, eventIndex };
+  const loc = { eventIndex };
   let closeModal: () => void = () => undefined;
 
   const modal = openModal(`Edit event`, body, [
@@ -1587,73 +1460,69 @@ function renderTreeView(
   rerender: () => void
 ): HTMLElement {
   disposeEventsTreeFlows();
-  const file = ctx.getSeeds();
+  const file = ctx.getEvents();
   const wrap = el('div', { className: 'tree-view' });
-  let any = false;
+  const events = file.events.filter((event) =>
+    eventMatchesPersonalityFilter(event, personalityFilter)
+  );
 
-  file.seeds.forEach((seed, seedIndex) => {
-    if (!seedMatchesFilter(seed, personalityFilter)) return;
-    any = true;
-
-    const panel = el('div', { className: 'tree-seed-panel' });
-    panel.append(
-      el('h3', {
-        text: `${seed.id} [${seed.personalities.join(', ') || 'basic'}]`,
-      })
-    );
-
-    const canvas = el('div', { className: 'tree-flow-host' });
-    panel.append(canvas);
-    wrap.append(panel);
-
-    // Mount after the host is in the document tree (caller appends wrap next).
-    // Mount after layout so React Flow gets a non-zero container size.
-    requestAnimationFrame(() => {
-      const props: EventsTreeFlowProps = {
-        seed,
-        seedIndex,
-        onEditEvent: (si: number, ei: number) =>
-          openEventModal(ctx, si, ei, rerender),
-        onDeleteEvent: (si: number, ei: number) => {
-          const ev = ctx.getSeeds().seeds[si]?.events[ei];
-          if (!ev) return;
-          if (!confirmDeleteEvent(ev.label)) {
-            rerender();
-            return;
-          }
-          deleteEvent(ctx, si, ei);
-          rerender();
-        },
-        onAddEvent: (si: number) => {
-          const label = promptNewEventLabel();
-          if (!label) return;
-          const created = addEventToSeed(ctx, si, label);
-          openEventModal(ctx, created.seedIndex, created.eventIndex, rerender);
-          rerender();
-        },
-        onConnectEvents: (si: number, parentId: number, childId: number) => {
-          addCreateEventLink(ctx, si, parentId, childId);
-        },
-        onDisconnectEvents: (
-          si: number,
-          parentId: number,
-          childId: number
-        ) => {
-          removeCreateEventLink(ctx, si, parentId, childId);
-        },
-      };
-      mountEventsTreeFlow(canvas, props);
-    });
-  });
-
-  if (!any) {
+  if (events.length === 0) {
     wrap.append(
       el('div', {
         className: 'empty',
-        text: 'No seeds match the current filter.',
+        text: 'No events match the current filter.',
       })
     );
+    return wrap;
   }
+
+  const panel = el('div', { className: 'tree-panel' });
+  const canvas = el('div', { className: 'tree-flow-host' });
+  panel.append(canvas);
+  wrap.append(panel);
+
+  requestAnimationFrame(() => {
+    const props: EventsTreeFlowProps = {
+      events,
+      onEditEvent: (ei: number) => {
+        const eventId = events[ei]?.id;
+        const globalIndex = ctx
+          .getEvents()
+          .events.findIndex((event) => event.id === eventId);
+        if (globalIndex >= 0) {
+          openEventModal(ctx, globalIndex, rerender);
+        }
+      },
+      onDeleteEvent: (ei: number) => {
+        const eventId = events[ei]?.id;
+        const globalIndex = ctx
+          .getEvents()
+          .events.findIndex((event) => event.id === eventId);
+        const ev = globalIndex >= 0 ? ctx.getEvents().events[globalIndex] : undefined;
+        if (!ev) return;
+        if (!confirmDeleteEvent(ev.label)) {
+          rerender();
+          return;
+        }
+        deleteEvent(ctx, globalIndex);
+        rerender();
+      },
+      onAddEvent: () => {
+        const label = promptNewEventLabel();
+        if (!label) return;
+        const created = addEvent(ctx, label);
+        view = { kind: 'event', eventIndex: created.eventIndex };
+        rerender();
+      },
+      onConnectEvents: (parentId: number, childId: number) => {
+        addCreateEventLink(ctx, parentId, childId);
+      },
+      onDisconnectEvents: (parentId: number, childId: number) => {
+        removeCreateEventLink(ctx, parentId, childId);
+      },
+    };
+    mountEventsTreeFlow(canvas, props);
+  });
 
   return wrap;
 }
@@ -1662,7 +1531,7 @@ function renderFlatList(
   ctx: EventsEditorContext,
   rerender: () => void
 ): HTMLElement {
-  const rows = collectFlatEvents(ctx.getSeeds(), personalityFilter);
+  const rows = collectFlatEvents(ctx.getEvents(), personalityFilter);
   const list = el('div', { className: 'list' });
 
   if (rows.length === 0) {
@@ -1673,7 +1542,13 @@ function renderFlatList(
   }
 
   for (const row of rows) {
-    const { seed, event, seedIndex, eventIndex } = row;
+    const { event, eventIndex } = row;
+    const personalitiesLabel =
+      event.isBase && event.personalities?.length
+        ? event.personalities.join(', ')
+        : event.isBase
+          ? 'basic'
+          : '—';
     list.append(
       el(
         'div',
@@ -1684,12 +1559,12 @@ function renderFlatList(
         }),
         el('div', {
           className: 'meta',
-          text: `id ${event.id} · seed ${seed.id} · [${seed.personalities.join(', ') || 'basic'}] · energy ${event.energyAmount}`,
+          text: `id ${event.id} · [${personalitiesLabel}] · energy ${event.energyAmount}`,
         }),
         button(
           'Edit',
           () => {
-            view = { kind: 'event', seedIndex, eventIndex };
+            view = { kind: 'event', eventIndex };
             rerender();
           },
           'btn small primary'
@@ -1697,13 +1572,15 @@ function renderFlatList(
         button(
           'Duplicate',
           () => {
+            const file = ctx.getEvents();
             const copy = cloneEvent({
               ...event,
-              id: nextEventId(seed),
+              id: nextEventId(file.events),
               label: `${event.label} (copy)`,
               isBase: undefined,
+              personalities: undefined,
             });
-            updateSeed(ctx, seedIndex, { events: [...seed.events, copy] });
+            ctx.setEvents({ events: [...file.events, copy] });
             rerender();
           },
           'btn small'
@@ -1712,7 +1589,7 @@ function renderFlatList(
           'Delete',
           () => {
             if (!confirmDeleteEvent(event.label)) return;
-            deleteEvent(ctx, seedIndex, eventIndex);
+            deleteEvent(ctx, eventIndex);
             rerender();
           },
           'btn danger small'
@@ -1753,13 +1630,11 @@ function renderBrowse(
     button(
       'Add event',
       () => {
-        const seedIndex = ensureDefaultSeed(ctx);
         const label = promptNewEventLabel();
         if (!label) return;
-        const created = addEventToSeed(ctx, seedIndex, label);
+        const created = addEvent(ctx, label);
         view = {
           kind: 'event',
-          seedIndex: created.seedIndex,
           eventIndex: created.eventIndex,
         };
         rerender();
@@ -1833,18 +1708,17 @@ function renderPersonalityChips(
 
 function renderEventForm(
   ctx: EventsEditorContext,
-  loc: { seedIndex: number; eventIndex: number },
+  loc: { eventIndex: number },
   errorsBox: HTMLElement,
   rerender: () => void
 ): HTMLElement {
-  const seedIndex = loc.seedIndex;
   const eventIndex = loc.eventIndex;
-  const seed = ctx.getSeeds().seeds[seedIndex];
-  const event = seed?.events[eventIndex];
-  if (!seed || !event) {
+  const event = ctx.getEvents().events[eventIndex];
+  if (!event) {
     return el('div', { className: 'empty', text: 'Event not found.' });
   }
 
+  const allEvents = ctx.getEvents().events;
   const cardAliases = ctx.getCardAliases();
   const personalityIds = ctx.getPersonalities().map((p) => p.id);
 
@@ -1855,7 +1729,7 @@ function renderEventForm(
       'Delete',
       () => {
         if (!confirmDeleteEvent(event.label)) return;
-        deleteEvent(ctx, seedIndex, eventIndex);
+        deleteEvent(ctx, eventIndex);
         view = { kind: 'browse' };
         document.querySelector('.modal-overlay')?.remove();
         rerender();
@@ -1879,20 +1753,20 @@ function renderEventForm(
     field(
       'ID',
       numberInput(event.id, (v) =>
-        updateEvent(ctx, seedIndex, eventIndex, { id: v })
+        updateEvent(ctx, eventIndex, { id: v })
       )
     ),
     field(
       'Label',
       textInput(event.label, (v) =>
-        updateEvent(ctx, seedIndex, eventIndex, { label: v })
+        updateEvent(ctx, eventIndex, { label: v })
       )
     ),
     field(
       'Description',
       textareaInput(
         event.description ?? '',
-        (v) => updateEvent(ctx, seedIndex, eventIndex, { description: v }),
+        (v) => updateEvent(ctx, eventIndex, { description: v }),
         { rows: '4' }
       ),
       true
@@ -1900,45 +1774,47 @@ function renderEventForm(
     field(
       'Energy amount',
       numberInput(event.energyAmount, (v) =>
-        updateEvent(ctx, seedIndex, eventIndex, { energyAmount: v })
+        updateEvent(ctx, eventIndex, { energyAmount: v })
       )
     ),
     field(
       'Energy secret',
       checkboxInput(event.energyAmountSecret, (v) =>
-        updateEvent(ctx, seedIndex, eventIndex, { energyAmountSecret: v })
+        updateEvent(ctx, eventIndex, { energyAmountSecret: v })
       )
     ),
     field(
       'Cards per turn',
       numberInput(event.cardsPerTurn, (v) =>
-        updateEvent(ctx, seedIndex, eventIndex, { cardsPerTurn: v })
+        updateEvent(ctx, eventIndex, { cardsPerTurn: v })
       )
     ),
     field(
       'Auto complete (turns)',
       numberInput(event.autoComplete, (v) =>
-        updateEvent(ctx, seedIndex, eventIndex, { autoComplete: v })
+        updateEvent(ctx, eventIndex, { autoComplete: v })
       )
     ),
     field(
       'Auto complete secret',
       checkboxInput(event.autoCompleteSecret, (v) =>
-        updateEvent(ctx, seedIndex, eventIndex, { autoCompleteSecret: v })
+        updateEvent(ctx, eventIndex, { autoCompleteSecret: v })
       )
     ),
     field(
       'Cards required',
       checkboxInput(event.cardsRequired, (v) =>
-        updateEvent(ctx, seedIndex, eventIndex, { cardsRequired: v })
+        updateEvent(ctx, eventIndex, { cardsRequired: v })
       )
     ),
     field(
       'Is base',
       checkboxInput(!!event.isBase, (v) => {
-        updateEvent(ctx, seedIndex, eventIndex, {
+        updateEvent(ctx, eventIndex, (current) => ({
+          ...current,
           isBase: v || undefined,
-        });
+          personalities: v ? current.personalities ?? [] : undefined,
+        }));
         rerender();
       })
     )
@@ -1947,26 +1823,12 @@ function renderEventForm(
   if (event.isBase) {
     baseSection.append(
       field(
-        'Personalities (seed pack)',
+        'Personalities',
         renderPersonalityChips(
-          [...seed.personalities],
+          [...(event.personalities ?? [])],
           personalityIds,
           (next) => {
-            const moved = moveEventToPersonalities(
-              ctx,
-              seedIndex,
-              eventIndex,
-              next
-            );
-            loc.seedIndex = moved.seedIndex;
-            loc.eventIndex = moved.eventIndex;
-            if (view.kind === 'event') {
-              view = {
-                kind: 'event',
-                seedIndex: moved.seedIndex,
-                eventIndex: moved.eventIndex,
-              };
-            }
+            updateEvent(ctx, eventIndex, { personalities: next });
             rerender();
           }
         ),
@@ -1974,16 +1836,15 @@ function renderEventForm(
       ),
       el('div', {
         className: 'meta',
-        text: `Current seed: ${seed.id}`,
+        text: 'Empty = basic run without selected personalities.',
       })
     );
   }
 
   panel.append(eventAccordion('base', 'Base fields', baseSection));
 
-  const liveSeed = ctx.getSeeds().seeds[loc.seedIndex];
-  const liveEvent = liveSeed?.events[loc.eventIndex];
-  if (!liveSeed || !liveEvent) {
+  const liveEvent = ctx.getEvents().events[loc.eventIndex];
+  if (!liveEvent) {
     return panel;
   }
 
@@ -1993,7 +1854,6 @@ function renderEventForm(
       'Modifiers',
       renderModifiersSection(
         liveEvent,
-        loc.seedIndex,
         loc.eventIndex,
         ctx,
         cardAliases,
@@ -2005,7 +1865,6 @@ function renderEventForm(
       'Deal breakers',
       renderDealBreakersSection(
         liveEvent,
-        loc.seedIndex,
         loc.eventIndex,
         ctx,
         cardAliases,
@@ -2017,13 +1876,12 @@ function renderEventForm(
       'Results',
       renderResultsSection(
         liveEvent,
-        loc.seedIndex,
         loc.eventIndex,
         ctx,
         cardAliases,
         personalityIds,
         ctx.getThemeAliases(),
-        liveSeed,
+        allEvents,
         (liveEvent.dealBreakers ?? []).map((d) => d.alias),
         rerender
       )
@@ -2033,7 +1891,6 @@ function renderEventForm(
       'Outputs',
       renderOutputsSection(
         liveEvent,
-        loc.seedIndex,
         loc.eventIndex,
         ctx,
         cardAliases,
@@ -2048,20 +1905,18 @@ function renderEventForm(
 function renderEventDetail(
   root: HTMLElement,
   ctx: EventsEditorContext,
-  seedIndex: number,
   eventIndex: number,
   errorsBox: HTMLElement,
   rerender: () => void
 ): void {
-  const seed = ctx.getSeeds().seeds[seedIndex];
-  const event = seed?.events[eventIndex];
-  if (!seed || !event) {
+  const event = ctx.getEvents().events[eventIndex];
+  if (!event) {
     view = { kind: 'browse' };
     rerender();
     return;
   }
 
-  const loc = { seedIndex, eventIndex };
+  const loc = { eventIndex };
   root.append(
     renderBreadcrumb(ctx, rerender),
     el(
@@ -2072,7 +1927,6 @@ function renderEventDetail(
         if (view.kind === 'event') {
           view = {
             kind: 'event',
-            seedIndex: loc.seedIndex,
             eventIndex: loc.eventIndex,
           };
         }
@@ -2097,7 +1951,6 @@ export function renderEventsEditor(
     renderEventDetail(
       root,
       ctx,
-      view.seedIndex,
       view.eventIndex,
       errorsBox,
       rerender

@@ -8,6 +8,22 @@ import {
 import { DEFAULT_BGM_PATH } from '../data/sounds';
 import { ResolvedTheme } from '../types/Theme';
 
+/** Extra cover scale so parallax offsets never reveal empty edges. */
+const PARALLAX_COVER_PAD = 1.28;
+
+export interface BackgroundParallaxLayer {
+  image: Phaser.GameObjects.Image;
+  /** Multiplier of tree scroll X (0 = fixed, 1 = moves with tree). */
+  factorX: number;
+  /** Multiplier of tree scroll Y. */
+  factorY: number;
+}
+
+export interface ThemeBackgroundDrawResult {
+  objects: Phaser.GameObjects.GameObject[];
+  parallaxLayers: BackgroundParallaxLayer[];
+}
+
 export class ThemeManager {
   private active: ResolvedTheme;
 
@@ -44,14 +60,28 @@ export class ThemeManager {
   }
 }
 
+function coverScale(
+  image: Phaser.GameObjects.Image,
+  width: number,
+  height: number
+): number {
+  return Math.max(width / image.width, height / image.height) * PARALLAX_COVER_PAD;
+}
+
 export function preloadThemeAssets(
   scene: Phaser.Scene,
   theme: ResolvedTheme
 ): void {
   if (theme.background.image) {
     scene.load.image(
-      themeBackgroundTextureKey(theme.alias),
+      themeBackgroundTextureKey(theme.alias, 'base'),
       theme.background.image
+    );
+  }
+  if (theme.background.overlayImage) {
+    scene.load.image(
+      themeBackgroundTextureKey(theme.alias, 'overlay'),
+      theme.background.overlayImage
     );
   }
 }
@@ -61,19 +91,36 @@ export function drawThemeBackground(
   width: number,
   height: number,
   theme: ResolvedTheme
-): Phaser.GameObjects.GameObject[] {
+): ThemeBackgroundDrawResult {
   const objects: Phaser.GameObjects.GameObject[] = [];
-  const textureKey = themeBackgroundTextureKey(theme.alias);
+  const parallaxLayers: BackgroundParallaxLayer[] = [];
+  const baseKey = themeBackgroundTextureKey(theme.alias, 'base');
+  const overlayKey = themeBackgroundTextureKey(theme.alias, 'overlay');
 
-  if (theme.background.image && scene.textures.exists(textureKey)) {
+  if (theme.background.image && scene.textures.exists(baseKey)) {
     const image = scene.add
-      .image(width / 2, height / 2, textureKey)
+      .image(width / 2, height / 2, baseKey)
+      .setDepth(-2)
+      .setScrollFactor(0);
+    image.setScale(coverScale(image, width, height));
+    objects.push(image);
+    parallaxLayers.push({ image, factorX: 0.12, factorY: 0.1 });
+  }
+
+  if (theme.background.overlayImage && scene.textures.exists(overlayKey)) {
+    const overlay = scene.add
+      .image(width / 2, height / 2, overlayKey)
       .setDepth(-1)
       .setScrollFactor(0);
-    const scale = Math.max(width / image.width, height / image.height);
-    image.setScale(scale);
-    objects.push(image);
-    return objects;
+    overlay.setScale(coverScale(overlay, width, height));
+    // Black areas of the overlay PNG become transparent with SCREEN.
+    overlay.setBlendMode(Phaser.BlendModes.SCREEN);
+    objects.push(overlay);
+    parallaxLayers.push({ image: overlay, factorX: 0.32, factorY: 0.28 });
+  }
+
+  if (objects.length > 0) {
+    return { objects, parallaxLayers };
   }
 
   const g = scene.add.graphics().setDepth(-1).setScrollFactor(0);
@@ -108,7 +155,7 @@ export function drawThemeBackground(
   }
 
   objects.push(g);
-  return objects;
+  return { objects, parallaxLayers };
 }
 
 export function loadThemeBackgroundImage(
@@ -116,18 +163,32 @@ export function loadThemeBackgroundImage(
   theme: ResolvedTheme,
   onComplete: () => void
 ): void {
-  if (!theme.background.image) {
+  const needsBase = Boolean(theme.background.image);
+  const needsOverlay = Boolean(theme.background.overlayImage);
+  if (!needsBase && !needsOverlay) {
     onComplete();
     return;
   }
 
-  const textureKey = themeBackgroundTextureKey(theme.alias);
-  if (scene.textures.exists(textureKey)) {
+  const baseKey = themeBackgroundTextureKey(theme.alias, 'base');
+  const overlayKey = themeBackgroundTextureKey(theme.alias, 'overlay');
+  const baseReady = !needsBase || scene.textures.exists(baseKey);
+  const overlayReady = !needsOverlay || scene.textures.exists(overlayKey);
+  if (baseReady && overlayReady) {
     onComplete();
     return;
   }
 
-  scene.load.image(textureKey, theme.background.image);
+  if (needsBase && !scene.textures.exists(baseKey) && theme.background.image) {
+    scene.load.image(baseKey, theme.background.image);
+  }
+  if (
+    needsOverlay &&
+    !scene.textures.exists(overlayKey) &&
+    theme.background.overlayImage
+  ) {
+    scene.load.image(overlayKey, theme.background.overlayImage);
+  }
   scene.load.once(Phaser.Loader.Events.COMPLETE, onComplete);
   scene.load.start();
 }

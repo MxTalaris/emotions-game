@@ -1,78 +1,50 @@
 import { GameEventDefinition, PersonalityId } from '../types';
 import eventTemplatesJson from './event-templates.json';
 
-export interface EventSeedDefinition {
-  id: string;
-  /** Personality aliases that unlock this seed (0–2). Order does not matter. */
-  personalities: PersonalityId[];
+export interface EventTemplatesFile {
   events: GameEventDefinition[];
 }
 
-interface EventSeedsFile {
-  seeds: EventSeedDefinition[];
-}
+const templatesFile = eventTemplatesJson as EventTemplatesFile;
 
-const seedsFile = eventTemplatesJson as EventSeedsFile;
-
-export const eventSeeds: EventSeedDefinition[] = seedsFile.seeds.map((seed) => ({
-  id: seed.id,
-  personalities: [...seed.personalities],
-  events: seed.events as GameEventDefinition[],
-}));
+export const eventTemplates: GameEventDefinition[] = templatesFile.events.map(
+  (event) => ({
+    ...event,
+    personalities: event.personalities ? [...event.personalities] : undefined,
+  })
+);
 
 function normalizePersonalities(personalities: PersonalityId[]): PersonalityId[] {
   return [...new Set(personalities)].sort();
 }
 
-function personalitiesKey(personalities: PersonalityId[]): string {
-  return normalizePersonalities(personalities).join('|');
-}
-
-/** Seed id from selection: "basic", "warm", "guarded", "guarded-warm", ... */
-export function buildSeedId(selectedPersonalities: PersonalityId[]): string {
-  const normalized = normalizePersonalities(selectedPersonalities);
-  return normalized.length === 0 ? 'basic' : normalized.join('-');
-}
-
-const seedByPersonalityKey = new Map<string, EventSeedDefinition>();
-const seedById = new Map<string, EventSeedDefinition>();
-
-for (const seed of eventSeeds) {
-  seedByPersonalityKey.set(personalitiesKey(seed.personalities), seed);
-  seedById.set(seed.id, seed);
-}
-
-export function getSeedById(id: string): EventSeedDefinition | undefined {
-  return seedById.get(id);
-}
-
-function getBasicSeed(): EventSeedDefinition {
-  return seedByPersonalityKey.get('') ?? eventSeeds[0];
-}
-
-/**
- * Resolves the event pack for a run from selected personalities.
- * Selection [] → basic. Otherwise matches the pack for that exact set.
- */
-export function resolveSeed(
+export function baseEventMatchesSelection(
+  eventPersonalities: PersonalityId[],
   selectedPersonalities: PersonalityId[]
-): EventSeedDefinition {
-  const normalized = normalizePersonalities(selectedPersonalities);
-  const id = buildSeedId(normalized);
+): boolean {
+  const eventTags = normalizePersonalities(eventPersonalities);
+  const selected = normalizePersonalities(selectedPersonalities);
 
-  if (normalized.length === 0) {
-    return getBasicSeed();
+  if (eventTags.length === 0) {
+    return selected.length === 0;
   }
 
-  const matched =
-    seedByPersonalityKey.get(personalitiesKey(normalized)) ?? getSeedById(id);
+  return eventTags.every((personality) => selected.includes(personality));
+}
 
-  if (matched) {
-    return matched;
-  }
-
-  console.error(
-    `No event pack for seed "${id}". Available: ${eventSeeds.map((s) => s.id).join(', ')}`
+/** Base events unlocked by the personalities chosen on the start screen. */
+export function resolveBaseEvents(
+  selectedPersonalities: PersonalityId[]
+): GameEventDefinition[] {
+  return eventTemplates.filter(
+    (event) =>
+      event.isBase &&
+      baseEventMatchesSelection(event.personalities ?? [], selectedPersonalities)
   );
-  return getBasicSeed();
+}
+
+export function getEventTemplateById(
+  id: number
+): GameEventDefinition | undefined {
+  return eventTemplates.find((event) => event.id === id);
 }

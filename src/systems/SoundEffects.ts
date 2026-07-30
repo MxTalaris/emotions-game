@@ -19,10 +19,19 @@ export class SoundEffects {
   private readonly scene: Phaser.Scene;
   private readonly loaded = new Set<SoundSfxId>();
   private catalog: SoundsCatalog;
+  private enabled = false;
 
   constructor(scene: Phaser.Scene, catalog: SoundsCatalog) {
     this.scene = scene;
     this.catalog = catalog;
+  }
+
+  setEnabled(enabled: boolean): void {
+    this.enabled = enabled;
+  }
+
+  isEnabled(): boolean {
+    return this.enabled;
   }
 
   /** Queue catalog SFX that have a path for Phaser preload. */
@@ -82,6 +91,7 @@ export class SoundEffects {
   }
 
   play(id: SoundSfxId): void {
+    if (!this.enabled) return;
     const config = this.getAction(id);
     const key = audioKey(id);
     if (!config.path || !this.loaded.has(id)) return;

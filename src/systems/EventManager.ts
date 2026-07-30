@@ -1,5 +1,13 @@
-import { EventPersonalityRef, GameEventDefinition, GameEventInstance } from '../types';
-import { EventSeedDefinition } from '../data/eventTemplates';
+import {
+  EventPersonalityRef,
+  GameEventDefinition,
+  GameEventInstance,
+  PersonalityId,
+} from '../types';
+import {
+  eventTemplates,
+  resolveBaseEvents,
+} from '../data/eventTemplates';
 import {
   createEventInstance,
   layoutBaseEvents,
@@ -15,35 +23,34 @@ export interface PendingEventSpawn {
 }
 
 export class EventManager {
-  private readonly seed: EventSeedDefinition;
-  /** Template ids already spawned (a model is only introduced once). */
+  private readonly events: GameEventDefinition[];
+  private readonly selectedPersonalities: PersonalityId[];
   private spawnedTemplateIds = new Set<number>();
-  /** Board positions keyed by event instanceId. */
   private eventNodes = new Map<number, TreePosition>();
   private pendingSpawns: PendingEventSpawn[] = [];
 
-  constructor(seed: EventSeedDefinition) {
-    this.seed = seed;
-  }
-
-  get seedId(): string {
-    return this.seed.id;
+  constructor(
+    events: GameEventDefinition[] = eventTemplates,
+    selectedPersonalities: PersonalityId[] = []
+  ) {
+    this.events = events;
+    this.selectedPersonalities = selectedPersonalities;
   }
 
   private getTemplateById(id: number): GameEventDefinition | undefined {
-    return this.seed.events.find((template) => template.id === id);
+    return this.events.find((template) => template.id === id);
   }
 
   private getBaseTemplates(): GameEventDefinition[] {
-    return this.seed.events.filter((template) => template.isBase);
+    return resolveBaseEvents(this.selectedPersonalities);
   }
 
   generateInitialEvents(): GameEventInstance[] {
     const baseTemplates = this.getBaseTemplates();
 
-    if (baseTemplates.length !== 2) {
+    if (baseTemplates.length === 0) {
       console.warn(
-        `EventManager: expected 2 base events for seed "${this.seed.id}", found ${baseTemplates.length}.`
+        'EventManager: no base events match the selected personalities.'
       );
     }
 
@@ -60,7 +67,6 @@ export class EventManager {
     });
   }
 
-  /** Spawn child events from template ids under a parent instance. */
   spawnChildEvents(
     parent: GameEventInstance,
     templateIds: number[]
@@ -113,10 +119,6 @@ export class EventManager {
     });
   }
 
-  /**
-   * Decrements delayed spawns and returns those ready to spawn (remainingDelay <= 0).
-   * Call once at the start of each Sentir before resolving new results.
-   */
   tickPendingSpawns(
     findParent: (instanceId: number) => GameEventInstance | undefined
   ): Array<{ parent: GameEventInstance; children: GameEventInstance[] }> {

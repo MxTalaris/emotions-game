@@ -1,7 +1,7 @@
 import {
   EmotionsCatalog,
   EventAction,
-  EventSeedsFile,
+  EventTemplatesFile,
   PersonalityEntry,
   SOUND_ACTION_IDS,
   SoundsCatalog,
@@ -25,20 +25,8 @@ export function collectPersonalityIds(
   return new Set(personalities.map((p) => p.id));
 }
 
-export function collectEventIds(seeds: EventSeedsFile): Set<string> {
-  const ids = new Set<string>();
-  for (const seed of seeds.seeds) {
-    for (const event of seed.events) {
-      ids.add(String(event.id));
-    }
-  }
-  return ids;
-}
-
-export function collectSeedEventIds(
-  seed: EventSeedsFile['seeds'][number]
-): Set<string> {
-  return new Set(seed.events.map((event) => String(event.id)));
+export function collectEventIds(templates: EventTemplatesFile): Set<string> {
+  return new Set(templates.events.map((event) => String(event.id)));
 }
 
 function asAliasList(value: string | string[]): string[] {
@@ -129,7 +117,7 @@ function validateAction(
       errors.push(`${path}: createEvent.event is required`);
     } else if (!eventIds.has(action.event)) {
       errors.push(
-        `${path}: createEvent.event "${action.event}" not found in this seed`
+        `${path}: createEvent.event "${action.event}" not found in catalog`
       );
     }
     const ref = action.personality;
@@ -165,46 +153,39 @@ function validateAction(
   return errors;
 }
 
-export function validateEventSeeds(
-  seedsFile: EventSeedsFile,
+export function validateEventTemplates(
+  templatesFile: EventTemplatesFile,
   cardAliases: Set<string>,
   personalityIds: Set<string>,
   themeAliases: Set<string> = new Set(['basic'])
 ): string[] {
   const errors: string[] = [];
-  const seedIds = new Set<string>();
+  const eventIdSeen = new Set<number>();
+  const eventIds = collectEventIds(templatesFile);
 
-  seedsFile.seeds.forEach((seed, si) => {
-    const seedPath = `seeds[${si}] (${seed.id || '?'})`;
-    if (!seed.id?.trim()) {
-      errors.push(`${seedPath}: seed id is required`);
-    } else if (seedIds.has(seed.id)) {
-      errors.push(`${seedPath}: duplicate seed id "${seed.id}"`);
-    } else {
-      seedIds.add(seed.id);
-    }
-
-    seed.personalities.forEach((pid, pi) => {
-      if (!personalityIds.has(pid)) {
-        errors.push(
-          `${seedPath}.personalities[${pi}]: unknown personality "${pid}"`
-        );
-      }
-    });
-
-    const seedEventIds = collectSeedEventIds(seed);
-    const eventIdSeen = new Set<number>();
-    seed.events.forEach((event, ei) => {
-      const path = `${seedPath}.events[${ei}]`;
+  templatesFile.events.forEach((event, ei) => {
+      const path = `events[${ei}]`;
       if (typeof event.id !== 'number' || Number.isNaN(event.id)) {
         errors.push(`${path}: id must be a number`);
       } else if (eventIdSeen.has(event.id)) {
-        errors.push(`${path}: duplicate event id ${event.id} in this seed`);
+        errors.push(`${path}: duplicate event id ${event.id}`);
       } else {
         eventIdSeen.add(event.id);
       }
       if (!event.label?.trim()) {
         errors.push(`${path}: label is required`);
+      }
+
+      if (event.isBase) {
+        (event.personalities ?? []).forEach((pid, pi) => {
+          if (!personalityIds.has(pid)) {
+            errors.push(
+              `${path}.personalities[${pi}]: unknown personality "${pid}"`
+            );
+          }
+        });
+      } else if (event.personalities?.length) {
+        errors.push(`${path}: personalities are only allowed on base events`);
       }
 
       if (event.modifiers?.cards) {
@@ -245,7 +226,7 @@ export function validateEventSeeds(
               `${rPath}.actions[${ai}]`,
               cardAliases,
               personalityIds,
-              seedEventIds,
+              eventIds,
               themeAliases
             )
           );
@@ -268,7 +249,6 @@ export function validateEventSeeds(
           }
         }
       });
-    });
   });
 
   return errors;

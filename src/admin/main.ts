@@ -14,7 +14,7 @@ import {
 } from './editors/ThemesEditor';
 import {
   EmotionsCatalog,
-  EventSeedsFile,
+  EventTemplatesFile,
   PersonalityEntry,
   ThemesCatalogFile,
 } from './types';
@@ -29,7 +29,7 @@ type TabId = 'personalities' | 'cards' | 'events' | 'themes';
 
 let personalities: PersonalityEntry[] = [];
 let emotionsCatalog: EmotionsCatalog = {};
-let eventSeeds: EventSeedsFile = { seeds: [] };
+let eventTemplates: EventTemplatesFile = { events: [] };
 let themesCatalog: ThemesCatalogFile = {
   defaultTheme: 'basic',
   themes: [createBasicTheme()],
@@ -71,9 +71,9 @@ function renderActiveTab(): void {
     });
   } else if (activeTab === 'events') {
     renderEventsEditor(contentEl, {
-      getSeeds: () => eventSeeds,
-      setSeeds: (next) => {
-        eventSeeds = next;
+      getEvents: () => eventTemplates,
+      setEvents: (next) => {
+        eventTemplates = next;
       },
       getPersonalities: () => personalities,
       getCardAliases: () => [...collectCardAliases(emotionsCatalog)].sort(),
@@ -155,12 +155,12 @@ async function boot(): Promise<void> {
     const [p, cards, events, themes] = await Promise.all([
       loadData<PersonalityEntry[]>('personalities-catalog'),
       loadData<EmotionsCatalog>('emotions-catalog'),
-      loadData<EventSeedsFile>('event-templates'),
+      loadData<EventTemplatesFile>('event-templates'),
       loadData<ThemesCatalogFile>('themes-catalog'),
     ]);
     personalities = p;
     emotionsCatalog = cards;
-    eventSeeds = events;
+    eventTemplates = events;
     themesCatalog = themes;
     setStatus('Ready');
     renderActiveTab();

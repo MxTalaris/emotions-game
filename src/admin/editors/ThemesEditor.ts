@@ -264,7 +264,7 @@ function createThemeFromBasic(catalog: ThemesCatalogFile): ThemeEntry {
     ...basic,
     alias,
     name: 'New theme',
-    background: { ...basic.background, image: null },
+    background: { ...basic.background, image: null, overlayImage: null },
     borders: { ...basic.borders },
     buttons: { ...basic.buttons },
     eventColors: { ...basic.eventColors },

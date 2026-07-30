@@ -1,7 +1,10 @@
 import { SoundActionId, SoundsCatalog } from '../data/sounds';
 
 export interface ThemeBackground {
+  /** Base background layer (drawn behind). */
   image: string | null;
+  /** Optional overlay drawn on top of `image` (e.g. parallax foreground). */
+  overlayImage?: string | null;
   skyTop: string;
   skyMid: string;
   ground: string;
@@ -71,6 +74,7 @@ export interface ResolvedButtonColors {
 
 export interface ResolvedThemeBackground {
   image: string | null;
+  overlayImage: string | null;
   skyTop: number;
   skyMid: number;
   ground: number;
@@ -128,7 +132,7 @@ export const THEME_BUTTON_LABELS: Record<keyof ThemeButtons, string> = {
 };
 
 export const THEME_BACKGROUND_LABELS: Record<
-  keyof Omit<ThemeBackground, 'image'>,
+  keyof Omit<ThemeBackground, 'image' | 'overlayImage'>,
   string
 > = {
   skyTop: 'Céu (topo)',

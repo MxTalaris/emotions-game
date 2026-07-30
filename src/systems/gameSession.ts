@@ -1,25 +1,17 @@
 import { PersonalityId } from '../types';
-import { resolveSeed } from '../data/eventTemplates';
 
 const STORAGE_KEY = 'emotions-game-session';
-/** Personalities discovered across every run — survives clearGameSession(). */
 const COLLECTION_KEY = 'emotions-game-personalities';
 
 export interface GameSession {
-  /** Personalities generated during the current run. */
   personalities: PersonalityId[];
-  /** Up to 2 personalities selected on the start screen for this run's seed. */
   selectedPersonalities: PersonalityId[];
-  /** Resolved seed id for the current run. */
-  seedId: string;
 }
 
 function emptySession(): GameSession {
-  const seed = resolveSeed([]);
   return {
     personalities: [],
     selectedPersonalities: [],
-    seedId: seed.id,
   };
 }
 
@@ -37,12 +29,8 @@ export function loadGameSession(): GameSession {
           (id): id is PersonalityId => typeof id === 'string'
         )
       : [];
-    const seedId =
-      typeof parsed.seedId === 'string' && parsed.seedId.length > 0
-        ? parsed.seedId
-        : resolveSeed(selectedPersonalities).id;
 
-    return { personalities, selectedPersonalities, seedId };
+    return { personalities, selectedPersonalities };
   } catch {
     return emptySession();
   }
@@ -56,11 +44,9 @@ export function startGameSession(
   selectedPersonalities: PersonalityId[]
 ): GameSession {
   const selected = [...new Set(selectedPersonalities)].slice(0, 2);
-  const seed = resolveSeed(selected);
   const session: GameSession = {
     personalities: [],
     selectedPersonalities: selected,
-    seedId: seed.id,
   };
   saveGameSession(session);
   return session;
